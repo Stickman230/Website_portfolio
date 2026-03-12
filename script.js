@@ -523,16 +523,21 @@
         });
 
         // --- Hero parallax on scroll ---
-        gsap.to(".hero-content", {
-            scrollTrigger: {
-                trigger: ".hero",
-                start: "top top",
-                end: "bottom top",
-                scrub: true,
-            },
-            y: 150,
-            opacity: 0,
-        });
+        gsap.fromTo(".hero-content",
+            { y: 0, opacity: 1 },
+            {
+                scrollTrigger: {
+                    trigger: ".hero",
+                    start: "top top",
+                    end: "bottom top",
+                    scrub: true,
+                    invalidateOnRefresh: true,
+                },
+                y: 150,
+                opacity: 0,
+                immediateRender: false,
+            }
+        );
 
         // --- About card float effect ---
         gsap.to(".about-card", {
