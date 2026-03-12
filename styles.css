@@ -1774,3 +1774,21 @@ a {
         height: 30px;
     }
 }
+
+/* ---------- Flag Codes (cross-platform replacement for emoji flags) ---------- */
+.flag-code {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid var(--green);
+    background: rgba(0, 255, 65, 0.08);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--green);
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px var(--green-glow);
+}
