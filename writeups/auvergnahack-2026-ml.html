@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gravitational Classifier — AuvergneHack 2026 | Maxime Reynaud</title>
-    <meta name="description" content="CTF writeup: extracting a hidden passphrase from a pickled sklearn ML model — AuvergneHack 2026 Machine Learning challenge.">
+    <title>Gravitational Classifier | AuvergnHack 2026</title>
+    <meta name="description" content="CTF writeup: extracting a hidden passphrase from a pickled sklearn ML model — AuvergnHack 2026 Machine Learning challenge.">
     <meta name="theme-color" content="#0a0a0f">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230a0a0f'/><text x='50' y='66' font-family='monospace' font-size='48' font-weight='bold' fill='%2300ff41' text-anchor='middle'>MR</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,10 +55,10 @@
                 <span class="breadcrumb-sep">/</span>
                 <a href="../writeups.html">Writeups</a>
                 <span class="breadcrumb-sep">/</span>
-                <span>AuvergneHack 2026</span>
+                <span>AuvergnHack 2026</span>
             </nav>
             <div class="writeup-challenge-tags" style="margin-top:1.2rem;">
-                <span class="writeup-challenge-ctf">AuvergneHack 2026</span>
+                <span class="writeup-challenge-ctf">AuvergnHack 2026</span>
                 <span class="cat-badge cat-ml">Machine Learning</span>
             </div>
             <h1 class="writeup-challenge-title">Gravitational Classifier</h1>
@@ -97,15 +97,20 @@
             <section class="writeup-section" id="overview">
                 <div class="writeup-section-title">Overview</div>
                 <p class="writeup-p">
-                    A classic ML forensics challenge: you are handed a single <code>.pkl</code> file — a serialised
-                    scikit-learn model — and must extract a three-word passphrase hidden across its internals.
-                    No training data, no API, no server. Just you and the model weights.
+                    A classic ML forensics challenge: you are handed a single serialised
+                    scikit-learn model in <code>.pkl</code> format and must extract a three-word passphrase hidden across its internals.
+                    No training data, no API, no server. Just you and the model weights...
                 </p>
                 <p class="writeup-p">
                     The three words are concealed through three different techniques: an anomalous coefficient
                     in a secret classification class, a custom base64-encoded model attribute, and ASCII values
                     embedded as unusually large integers in a second class's coefficients. Each path requires
                     a slightly different angle of inspection.
+                </p>
+                <p class="writeup-p">
+                    You can download and try the CTF challenge using the model .pkl file <code>gravitational_model2.pkl</code> 
+                    and solve it using my personal python write up <code>ML_AuvergnHack2026.py</code>. 
+                    Both of these files are available to download on the right hand side
                 </p>
             </section>
 
@@ -124,15 +129,23 @@
                     three words scattered throughout the model. Combine them with underscores to obtain the
                     complete flag.
                 </div>
-                <p class="writeup-p">
-                    A single file is provided: <code>gravitational_model2.pkl</code>. The flag format is
-                    <code>ZiTF{word1_word2_word3}</code>.
-                </p>
+                <div class="callout callout-tip">
+                    <span class="callout-label">Definitions</span>
+                    <strong>Pickle</strong>: It can be used to serialize Python object structures, which refers to the process of converting an object 
+                    in the memory to a byte stream that can be stored as a binary file on disk. When we load it back to a Python 
+                    program, this binary file can be de-serialized back to a Python object. - <a href="https://pythonnumericalmethods.studentorg.berkeley.edu/notebooks/chapter11.03-Pickle-Files.html"><u>Python Programming and Numerical Methods</u></a>
+                    <br><br>
+                    <strong>Vectorizer</strong>: Converts text into numerical features that a machine learning model can understand. In this challenge, the vectorizer turns input words into a 238-dimensional feature vector.
+                    <br><br>
+                    <strong>Classifier</strong>: Machine learning model that assigns an input to one of several possible categories. In this challenge, the classifier uses the vectorized text features to predict one of 8 astronomical-object classes.
+
+                </div>
                 <div class="callout callout-warn">
                     <span class="callout-label">Security warning</span>
-                    Pickle files can execute arbitrary code on load. Always open untrusted
-                    <code>.pkl</code> files inside an isolated VM or container — never on your host machine.
+                    Pickle files can execute arbitrary code on load. ALWAYS open untrusted
+                    <code>.pkl</code> files inside an isolated VM or container. Never on your host machine !
                 </div>
+                
             </section>
 
             <!-- Initial Analysis -->
@@ -140,9 +153,11 @@
                 <div class="writeup-section-title">Initial Analysis</div>
                 <p class="writeup-p">
                     The first step is loading the pickle and understanding what we are dealing with.
-                    The file contains a dictionary with two keys: <code>model</code> and <code>vectorizer</code>.
-                    The model is a linear classifier (with a <code>coef_</code> matrix) paired with a
-                    <code>CountVectorizer</code> that maps words to integer indices.
+                    After opening the file with the <code>pickle</code> library and seing that it requires the <code>sklearn</code> library aswell.
+                    We discover that it contains a dictionary with two keys: <code>model</code> and <code>vectorizer</code>. The model is a 
+                    linear classifier (with a <code>coef_</code> matrix) paired with a
+                    <code>CountVectorizer</code> that maps words to integer indices. Our first instinc is to use <code>__dict__</code> to open up 
+                    the scikit-learn object and observe it's attributes, a quick "dump the model's internal state” step.
                 </p>
 
                 <div class="code-block">
@@ -164,7 +179,7 @@ path = <span class="s">"gravitational_model2.pkl"</span>
 model      = data[<span class="s">"model"</span>]
 vectorizer = data[<span class="s">"vectorizer"</span>]
 
-<span class="nb">print</span>(<span class="s">"Model contents:"</span>, model.__dict__.items())
+<span class="nb">print</span>(<span class="s">"Model contents:"</span>, model.__dict__.keys())
 <span class="nb">print</span>(<span class="s">"Classes:"</span>,       model.classes_)
 <span class="nb">print</span>(<span class="s">"coef_ shape:"</span>,   model.coef_.shape)</pre>
                 </div>
@@ -177,12 +192,13 @@ vectorizer = data[<span class="s">"vectorizer"</span>]
                         <span>output</span>
                     </div>
                     <pre><span class="cmd">$ python inspect.py</span>
-<span class="out">Classes: ['black_hole' 'galaxy' 'gas_giant' 'ice_giant' 'secret' 'star' 'super_earth' 'terrestrial_planet']
+<span class="out">Model contents: dict_keys(['penalty', 'C', 'l1_ratio', 'dual', 'tol', 'fit_intercept', 'intercept_scaling', 'class_weight', 'random_state', 'solver', 'max_iter', 'verbose', 'warm_start', 'n_jobs', 'n_features_in_', 'classes_', 'n_iter_', 'coef_', 'intercept_', 'galaxy_'])
+Classes: ['black_hole' 'galaxy' 'gas_giant' 'ice_giant' 'secret' 'star' 'super_earth' 'terrestrial_planet']
 coef_ shape: (8, 238)</span></pre>
                 </div>
 
                 <p class="writeup-p">
-                    Two things immediately stand out from the <code>__dict__</code> inspection:
+                    Bingo! Two things immediately stand out from the <code>model.classes_</code> and <code>__dict__</code> inspection:
                     the presence of a <code>'secret'</code> classification class among the otherwise
                     astronomical labels, and an unexpected custom attribute called <code>galaxy_</code>
                     that is not part of the standard sklearn API. Both are worth pursuing.
@@ -193,7 +209,7 @@ coef_ shape: (8, 238)</span></pre>
             <section class="writeup-section" id="methodology">
                 <div class="writeup-section-title">Methodology</div>
                 <p class="writeup-p">
-                    Three independent hiding techniques were used — one word per technique.
+                    Three independent hiding techniques were used with one word per technique.
                     We tackle each in turn.
                 </p>
                 <div class="steps">
@@ -226,20 +242,10 @@ coef_ shape: (8, 238)</span></pre>
                             <div class="step-title">ASCII values hidden as large integers in <code>super_earth</code></div>
                             <div class="step-desc">
                                 Iterate over every coefficient across all classes, casting each to
-                                an integer. Values greater than 1 are statistically impossible in a
-                                well-trained linear classifier — any such integer is suspect. The
+                                an integer. Values greater than 2 are statistically impossible in a
+                                well-trained linear classifier, any such integer is suspect... The
                                 anomalous integers found in the <code>super_earth</code> class decode
                                 directly to ASCII characters forming the third word.
-                            </div>
-                        </div>
-                    </div>
-                    <div class="step">
-                        <div class="step-num">04</div>
-                        <div class="step-body">
-                            <div class="step-title">Reconstruct the flag</div>
-                            <div class="step-desc">
-                                Combine the three words into a grammatically coherent phrase and
-                                format as <code>ZiTF{word1_word2_word3}</code>.
                             </div>
                         </div>
                     </div>
@@ -250,12 +256,15 @@ coef_ shape: (8, 238)</span></pre>
             <section class="writeup-section" id="implementation">
                 <div class="writeup-section-title">Implementation</div>
 
-                <h2 class="writeup-h2">Word 1 — secret class coefficients</h2>
+                <h2 class="writeup-h2">Word 1: <code>secret</code> class coefficients</h2>
                 <p class="writeup-p">
-                    We extract the coefficient row corresponding to <code>secret</code> (index 4),
+                    This model takes input text, converts it into 238 numerical features using a vectorizer, and then classifies it into one of 8 classes.
+                    This <code>secret</code> class (part of the 8 of this model) will most probably have associated coeficients for its vocabulary (238 of them).
+                    We get the index (index 4) and extract the coefficient row corresponding to the <code>secret</code> class,
                     then build a list of <code>(index, word, coefficient)</code> tuples sorted by
-                    weight. One word — <code>banana</code> — has a coefficient of <code>5.336722</code>,
-                    dramatically higher than everything else in the vocabulary.
+                    weight. One word, <code>banana</code>, has a coefficient of <code>5.336722</code>,
+                    dramatically higher than everything else in the vocabulary. This means that 
+                    when the word/feature banana appears in the input text, it strongly pushes the classifier toward the class secret, making it very suspect.
                 </p>
 
                 <div class="code-block">
@@ -286,21 +295,23 @@ top10 = sorted(comparison, key=<span class="k">lambda</span> x: x[<span class="m
                         <span class="terminal-dot green"></span>
                         <span>output</span>
                     </div>
-                    <pre><span class="out">Top weights for 'secret' class:
-[(12, 'banana', 5.336722), (87, 'orbit', 0.412...), (34, 'dark', 0.389...), ...]</span></pre>
+                    <pre><span class="cmd">$ python word1.py</span>
+<span class="out">Top weights for 'secret' class:
+[(9, 'banana', 5.336722...), (15, 'bigger', -0.006756...), (65, 'entity', -0.006995...), ...]</span></pre>
                 </div>
 
                 <p class="writeup-p">
-                    The gap between <code>banana</code> at <code>5.34</code> and the next entry
-                    at <code>0.41</code> is a clear statistical anomaly — this word was injected
+                    The gap between <code>banana</code> at <code>5.3368</code> and the next entry
+                    at <code>-0.0068</code> is a clear statistical anomaly. We assume that this word was injected
                     deliberately. <strong>Word 1: <code>banana</code></strong>.
                 </p>
 
-                <h2 class="writeup-h2">Word 2 — base64 custom attribute</h2>
+                <h2 class="writeup-h2">Word 2: base64 custom attribute</h2>
                 <p class="writeup-p">
                     The <code>galaxy_</code> attribute does not belong to any standard sklearn estimator.
-                    It was added directly to the model object before serialisation as a covert data carrier.
-                    Decoding it from base64 is straightforward.
+                    It was added directly to the model object before serialisation as a covert data carrier. 
+                    When looking deeper at the value stored in galaxy_, we see something that resembles base64 
+                    (due to the trailing <code>==</code>, often a sign of base64 padding). Decoding it from base64 is straightforward.
                 </p>
 
                 <div class="code-block">
@@ -327,21 +338,25 @@ decoded = base64.b64decode(raw).decode(<span class="s">"utf-8"</span>)
                         <span class="terminal-dot green"></span>
                         <span>output</span>
                     </div>
-                    <pre><span class="out">galaxy_ raw:     bG92ZQ==
+                    <pre><span class="cmd">$ python word2.py</span>
+<span class="out">galaxy_ raw:     bG92ZQ==
 galaxy_ decoded: love</span></pre>
                 </div>
 
                 <p class="writeup-p">
-                    <strong>Word 2: <code>love</code></strong>.
+                    So this is also part of our flag. <strong>Word 2: <code>love</code></strong>.
                 </p>
 
-                <h2 class="writeup-h2">Word 3 — ASCII integers in super_earth</h2>
+                <h2 class="writeup-h2">Word 3: ASCII integers in super_earth</h2>
                 <p class="writeup-p">
                     Coefficients in a trained linear classifier are real-valued weights typically
-                    in the range <code>[-2, 2]</code>. Any integer greater than 1 is a red flag.
-                    Iterating over every coefficient and casting to <code>int</code>, then filtering
-                    for values <code>&gt; 1</code>, surfaces a suspicious sequence exclusively in
-                    the <code>super_earth</code> class.
+                    in the range <code>[-2, 2]</code>. Any integer greater than 2 is a red flag.
+                    Iterating over every coefficient and casting to <code>int</code> 
+                    (because my small brain can not process scientific number notation), then filtering
+                    for values <code>&gt; 2</code>, surfaces a suspicious sequence exclusively in
+                    the <code>super_earth</code> class. Once we have identified the suspicious coefficients, 
+                    we take a closer look and observe that the numbers are in the ASCII lowercase letter range <code>97-122 (a-z)</code>. 
+                    With this observation, we attempt to transform our values into letters and see if we get a string that makes sense.
                 </p>
 
                 <div class="code-block">
@@ -358,7 +373,7 @@ galaxy_ decoded: love</span></pre>
 <span class="k">for</span> i <span class="k">in</span> <span class="nb">range</span>(<span class="nb">len</span>(classes)):
     <span class="k">for</span> j <span class="k">in</span> <span class="nb">range</span>(<span class="nb">len</span>(model.coef_[<span class="mi">0</span>])):
         val = <span class="nb">int</span>(model.coef_[i][j])
-        <span class="k">if</span> val > <span class="mi">1</span>:
+        <span class="k">if</span> val > <span class="mi">2</span>:
             <span class="nb">print</span>(<span class="s">f"Class: </span>{classes[i]}<span class="s">, int value: </span>{val}<span class="s">"</span>)
             <span class="k">if</span> classes[i] == <span class="s">"super_earth"</span>:
                 ascii_values.append(val)
@@ -374,7 +389,8 @@ galaxy_ decoded: love</span></pre>
                         <span class="terminal-dot green"></span>
                         <span>output</span>
                     </div>
-                    <pre><span class="out">Class: super_earth, int value: 99
+                    <pre><span class="cmd">$ python word3.py</span>
+<span class="out">Class: super_earth, int value: 99
 Class: super_earth, int value: 104
 Class: super_earth, int value: 105
 Class: super_earth, int value: 109
@@ -393,7 +409,7 @@ Decoded: chimpanzee</span></pre>
                     <span class="callout-label">Tip</span>
                     If you are not comfortable with Python's <code>chr()</code>, you can paste
                     the integer sequence directly into
-                    <a href="https://gchq.github.io/CyberChef/#recipe=From_Decimal('Space',false)" target="_blank" rel="noopener" style="color:var(--cyan);">CyberChef → From Decimal</a>
+                    <a href="https://gchq.github.io/CyberChef/#recipe=From_Decimal('Comma',false)" target="_blank" rel="noopener" style="color:var(--cyan);">CyberChef → From Decimal</a>
                     to reach the same result instantly.
                 </div>
 
@@ -404,8 +420,8 @@ Decoded: chimpanzee</span></pre>
                 <h2 class="writeup-h2">Assembling the flag</h2>
                 <p class="writeup-p">
                     The three words are <code>chimpanzee</code>, <code>love</code>, and <code>banana</code>.
-                    Ordered into a grammatically coherent phrase — <em>chimpanzee love banana</em> — and
-                    joined with underscores gives the final flag.
+                    Ordered into a grammatically coherent phrase we get <em>chimpanzee love banana</em>. We then
+                    join them with underscores and that gives us the final flag.
                 </p>
             </section>
 
@@ -425,7 +441,7 @@ Decoded: chimpanzee</span></pre>
             <section class="writeup-section" id="conclusion">
                 <div class="writeup-section-title">Conclusion</div>
                 <p class="writeup-p">
-                    This challenge demonstrates that a serialised ML model is not just weights — it is
+                    This challenge demonstrates that a serialised ML model is not just useless weights, it is
                     a Python object graph. Anything that can be stored in a Python object can be hidden
                     inside a <code>.pkl</code> file: custom attributes, unusual coefficient values, or
                     encoded strings. The standard model inspection workflow (print <code>__dict__</code>,
@@ -433,7 +449,7 @@ Decoded: chimpanzee</span></pre>
                 </p>
                 <p class="writeup-p">
                     From a defensive standpoint, this is also why blindly loading pickle files from
-                    untrusted sources is dangerous — they can carry arbitrary Python objects, not just
+                    untrusted sources is dangerous, they can carry arbitrary Python objects, not just
                     model weights.
                 </p>
                 <div class="callout callout-tip">
@@ -448,6 +464,25 @@ Decoded: chimpanzee</span></pre>
 
         <!-- Sidebar -->
         <aside class="writeup-sidebar">
+
+            <!-- Challenge files -->
+            <div class="sidebar-block">
+                <div class="sidebar-block-title">Challenge Files</div>
+                <div class="sidebar-block-body">
+                    <div class="file-list">
+                        <a href="files/AuvergnHack2026/gravitational_model2.pkl" class="file-item">
+                            <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            gravitational_model2.pkl
+                            <span class="file-size">.pkl</span>
+                        </a>
+                        <a href="files/AuvergnHack2026/ML_AuvergnHack2026.py" class="file-item">
+                            <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            ML_AuvergnHack2026.py
+                            <span class="file-size">.py</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
 
             <!-- Table of contents -->
             <div class="sidebar-block">
@@ -471,7 +506,7 @@ Decoded: chimpanzee</span></pre>
                 <div class="sidebar-block-body" style="padding:0.8rem 1rem;">
                     <div class="meta-row">
                         <span class="meta-row-key">CTF</span>
-                        <span class="meta-row-val">AuvergneHack 2026</span>
+                        <span class="meta-row-val">AuvergnHack 2026</span>
                     </div>
                     <div class="meta-row">
                         <span class="meta-row-key">Category</span>
@@ -506,20 +541,6 @@ Decoded: chimpanzee</span></pre>
                         <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;"><span style="color:var(--green);">▸</span> scikit-learn</span>
                         <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;"><span style="color:var(--green);">▸</span> base64</span>
                         <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;"><span style="color:var(--green);">▸</span> CyberChef</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Challenge files -->
-            <div class="sidebar-block">
-                <div class="sidebar-block-title">Challenge Files</div>
-                <div class="sidebar-block-body">
-                    <div class="file-list">
-                        <a href="files/gravitational_model2.pkl" class="file-item">
-                            <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            gravitational_model2.pkl
-                            <span class="file-size">.pkl</span>
-                        </a>
                     </div>
                 </div>
             </div>
