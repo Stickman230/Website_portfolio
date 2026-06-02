@@ -1151,12 +1151,6 @@ a {
     border-color: rgba(192, 192, 192, 0.2);
 }
 
-.competition-card.silver .competition-rank {
-    color: var(--silver);
-    border-color: var(--silver);
-    text-shadow: 0 0 10px rgba(192, 192, 192, 0.3);
-}
-
 .competition-card.bronze .competition-rank {
     color: var(--bronze);
     border-color: var(--bronze);
@@ -1170,6 +1164,12 @@ a {
     color: var(--green);
     min-width: 60px;
     text-align: center;
+}
+
+.competition-card.silver .competition-rank {
+    color: var(--silver);
+    border-color: var(--silver);
+    text-shadow: 0 0 10px rgba(192, 192, 192, 0.3);
 }
 
 .competition-rank.top-pct {
