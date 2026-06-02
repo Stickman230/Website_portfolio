@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Machine Learning Challenge — AuvergneHack 2026 | Maxime Reynaud</title>
-    <meta name="description" content="CTF writeup for the AuvergneHack 2026 Machine Learning challenge by Maxime Reynaud.">
+    <title>Gravitational Classifier — AuvergneHack 2026 | Maxime Reynaud</title>
+    <meta name="description" content="CTF writeup: extracting a hidden passphrase from a pickled sklearn ML model — AuvergneHack 2026 Machine Learning challenge.">
     <meta name="theme-color" content="#0a0a0f">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230a0a0f'/><text x='50' y='66' font-family='monospace' font-size='48' font-weight='bold' fill='%2300ff41' text-anchor='middle'>MR</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -61,7 +61,7 @@
                 <span class="writeup-challenge-ctf">AuvergneHack 2026</span>
                 <span class="cat-badge cat-ml">Machine Learning</span>
             </div>
-            <h1 class="writeup-challenge-title">Machine Learning Challenge</h1>
+            <h1 class="writeup-challenge-title">Gravitational Classifier</h1>
             <div class="writeup-challenge-meta-row">
                 <div class="writeup-meta-item">
                     <span class="writeup-meta-key">Date</span>
@@ -74,6 +74,10 @@
                 <div class="writeup-meta-item">
                     <span class="writeup-meta-key">Category</span>
                     <span class="writeup-meta-val">Machine Learning</span>
+                </div>
+                <div class="writeup-meta-item">
+                    <span class="writeup-meta-key">Flag</span>
+                    <span class="writeup-meta-val">ZiTF{chimpanzee_love_banana}</span>
                 </div>
                 <div class="writeup-meta-item">
                     <span class="writeup-meta-key">Author</span>
@@ -93,12 +97,15 @@
             <section class="writeup-section" id="overview">
                 <div class="writeup-section-title">Overview</div>
                 <p class="writeup-p">
-                    <!-- [WRITEUP] Replace with challenge description -->
-                    Add your challenge description here. What was the goal? What were you given?
-                    What made this challenge interesting or unique?
+                    A classic ML forensics challenge: you are handed a single <code>.pkl</code> file — a serialised
+                    scikit-learn model — and must extract a three-word passphrase hidden across its internals.
+                    No training data, no API, no server. Just you and the model weights.
                 </p>
                 <p class="writeup-p">
-                    <!-- [WRITEUP] Add more context if needed -->
+                    The three words are concealed through three different techniques: an anomalous coefficient
+                    in a secret classification class, a custom base64-encoded model attribute, and ASCII values
+                    embedded as unusually large integers in a second class's coefficients. Each path requires
+                    a slightly different angle of inspection.
                 </p>
             </section>
 
@@ -107,17 +114,24 @@
                 <div class="writeup-section-title">Challenge Description</div>
                 <div class="callout callout-info">
                     <span class="callout-label">Challenge prompt</span>
-                    <!-- [WRITEUP] Paste the exact challenge description from the CTF platform here -->
-                    Paste the challenge description here.
+                    Dr. Bonobo, a principal researcher in artificial intelligence at the Simian-7 orbital station,
+                    was urgently transferred after being suspected of spying on behalf of a dissident faction.
+                    Before his departure, he was working on a machine learning model designed to classify
+                    astronomical objects around Sagittarius Ape-Star. Simian counterintelligence recovered the
+                    trained model file (.pkl) from his workstation. Analysts believe it contains classified
+                    information regarding the upcoming secret mission! Maybe a passphrase? Load the model,
+                    inspect its inner workings, and reconstruct the hidden passphrase. The flag consists of
+                    three words scattered throughout the model. Combine them with underscores to obtain the
+                    complete flag.
                 </div>
                 <p class="writeup-p">
-                    <!-- [WRITEUP] What files / services were provided? -->
+                    A single file is provided: <code>gravitational_model2.pkl</code>. The flag format is
+                    <code>ZiTF{word1_word2_word3}</code>.
                 </p>
-
-                <!-- Challenge files list (matches sidebar) -->
-                <div class="writeup-img-wrap" style="display:none" id="challenge-screenshot-1">
-                    <img src="assets/challenge-description.png" alt="Challenge description screenshot">
-                    <div class="writeup-img-caption">Challenge description on the CTF platform</div>
+                <div class="callout callout-warn">
+                    <span class="callout-label">Security warning</span>
+                    Pickle files can execute arbitrary code on load. Always open untrusted
+                    <code>.pkl</code> files inside an isolated VM or container — never on your host machine.
                 </div>
             </section>
 
@@ -125,7 +139,10 @@
             <section class="writeup-section" id="analysis">
                 <div class="writeup-section-title">Initial Analysis</div>
                 <p class="writeup-p">
-                    <!-- [WRITEUP] What did you do first? Inspect files, run the model, explore the dataset? -->
+                    The first step is loading the pickle and understanding what we are dealing with.
+                    The file contains a dictionary with two keys: <code>model</code> and <code>vectorizer</code>.
+                    The model is a linear classifier (with a <code>coef_</code> matrix) paired with a
+                    <code>CountVectorizer</code> that maps words to integer indices.
                 </p>
 
                 <div class="code-block">
@@ -137,55 +154,93 @@
                             copy
                         </button>
                     </div>
-                    <pre><span class="c"># [WRITEUP] Replace with your actual analysis script</span>
-<span class="k">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
-<span class="k">import</span> <span class="n">torch</span>
+                    <pre><span class="k">import</span> pickle, sklearn, base64
 
-<span class="c"># Load the provided model / dataset</span>
-<span class="n">model</span> = <span class="n">torch</span>.<span class="n">load</span>(<span class="s">'model.pt'</span>)
-<span class="nb">print</span>(<span class="n">model</span>)</pre>
+path = <span class="s">"gravitational_model2.pkl"</span>
+
+<span class="k">with</span> <span class="nb">open</span>(path, <span class="s">"rb"</span>) <span class="k">as</span> f:
+    data = pickle.load(f)
+
+model      = data[<span class="s">"model"</span>]
+vectorizer = data[<span class="s">"vectorizer"</span>]
+
+<span class="nb">print</span>(<span class="s">"Model contents:"</span>, model.__dict__.items())
+<span class="nb">print</span>(<span class="s">"Classes:"</span>,       model.classes_)
+<span class="nb">print</span>(<span class="s">"coef_ shape:"</span>,   model.coef_.shape)</pre>
                 </div>
 
-                <div class="writeup-img-wrap">
-                    <img src="assets/initial-analysis.png" alt="Initial analysis output" onerror="this.parentElement.style.display='none'">
-                    <div class="writeup-img-caption">Initial model inspection output</div>
+                <div class="terminal-output">
+                    <div class="terminal-output-header">
+                        <span class="terminal-dot red"></span>
+                        <span class="terminal-dot yellow"></span>
+                        <span class="terminal-dot green"></span>
+                        <span>output</span>
+                    </div>
+                    <pre><span class="cmd">$ python inspect.py</span>
+<span class="out">Classes: ['black_hole' 'galaxy' 'gas_giant' 'ice_giant' 'secret' 'star' 'super_earth' 'terrestrial_planet']
+coef_ shape: (8, 238)</span></pre>
                 </div>
+
+                <p class="writeup-p">
+                    Two things immediately stand out from the <code>__dict__</code> inspection:
+                    the presence of a <code>'secret'</code> classification class among the otherwise
+                    astronomical labels, and an unexpected custom attribute called <code>galaxy_</code>
+                    that is not part of the standard sklearn API. Both are worth pursuing.
+                </p>
             </section>
 
             <!-- Methodology -->
             <section class="writeup-section" id="methodology">
                 <div class="writeup-section-title">Methodology</div>
                 <p class="writeup-p">
-                    <!-- [WRITEUP] Describe your overall approach and reasoning -->
+                    Three independent hiding techniques were used — one word per technique.
+                    We tackle each in turn.
                 </p>
-
                 <div class="steps">
                     <div class="step">
                         <div class="step-num">01</div>
                         <div class="step-body">
-                            <div class="step-title"><!-- [WRITEUP] Step title --></div>
-                            <div class="step-desc"><!-- [WRITEUP] Step description --></div>
+                            <div class="step-title">Anomalous coefficient in the <code>secret</code> class</div>
+                            <div class="step-desc">
+                                Isolate the coefficient vector for the <code>secret</code> class,
+                                map each value back to its vocabulary word via the vectorizer,
+                                and sort by descending weight. The word with the largest coefficient
+                                by a significant margin is the first hidden word.
+                            </div>
                         </div>
                     </div>
                     <div class="step">
                         <div class="step-num">02</div>
                         <div class="step-body">
-                            <div class="step-title"><!-- [WRITEUP] Step title --></div>
-                            <div class="step-desc"><!-- [WRITEUP] Step description --></div>
+                            <div class="step-title">Base64-encoded custom model attribute</div>
+                            <div class="step-desc">
+                                The <code>galaxy_</code> attribute is a non-standard field injected
+                                directly into the model object. Its value is a base64 string that,
+                                once decoded, reveals the second hidden word.
+                            </div>
                         </div>
                     </div>
                     <div class="step">
                         <div class="step-num">03</div>
                         <div class="step-body">
-                            <div class="step-title"><!-- [WRITEUP] Step title --></div>
-                            <div class="step-desc"><!-- [WRITEUP] Step description --></div>
+                            <div class="step-title">ASCII values hidden as large integers in <code>super_earth</code></div>
+                            <div class="step-desc">
+                                Iterate over every coefficient across all classes, casting each to
+                                an integer. Values greater than 1 are statistically impossible in a
+                                well-trained linear classifier — any such integer is suspect. The
+                                anomalous integers found in the <code>super_earth</code> class decode
+                                directly to ASCII characters forming the third word.
+                            </div>
                         </div>
                     </div>
                     <div class="step">
                         <div class="step-num">04</div>
                         <div class="step-body">
-                            <div class="step-title"><!-- [WRITEUP] Step title --></div>
-                            <div class="step-desc"><!-- [WRITEUP] Step description --></div>
+                            <div class="step-title">Reconstruct the flag</div>
+                            <div class="step-desc">
+                                Combine the three words into a grammatically coherent phrase and
+                                format as <code>ZiTF{word1_word2_word3}</code>.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -194,30 +249,34 @@
             <!-- Implementation -->
             <section class="writeup-section" id="implementation">
                 <div class="writeup-section-title">Implementation</div>
+
+                <h2 class="writeup-h2">Word 1 — secret class coefficients</h2>
                 <p class="writeup-p">
-                    <!-- [WRITEUP] Walk through your exploit/solution code -->
+                    We extract the coefficient row corresponding to <code>secret</code> (index 4),
+                    then build a list of <code>(index, word, coefficient)</code> tuples sorted by
+                    weight. One word — <code>banana</code> — has a coefficient of <code>5.336722</code>,
+                    dramatically higher than everything else in the vocabulary.
                 </p>
 
                 <div class="code-block">
                     <div class="code-block-header">
                         <span class="code-block-lang">Python</span>
-                        <span class="code-block-file">exploit.py</span>
+                        <span class="code-block-file">word1.py</span>
                         <button class="code-block-copy" onclick="copyCode(this)">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                             copy
                         </button>
                     </div>
-                    <pre><span class="c"># [WRITEUP] Replace with your actual exploit script</span>
-<span class="k">import</span> <span class="n">torch</span>
-<span class="k">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+                    <pre>classes   = model.classes_
+sec_index = list(classes).index(<span class="s">"secret"</span>)
+coef      = model.coef_[sec_index]
 
-<span class="c"># Your solution here</span>
-</pre>
-                </div>
+<span class="c"># Map each vocabulary entry to its coefficient value</span>
+sorted_vocab = dict(sorted(vectorizer.vocabulary_.items(), key=<span class="k">lambda</span> item: item[<span class="mi">1</span>]))
+comparison   = [(idx, word, <span class="nb">float</span>(coef[idx])) <span class="k">for</span> word, idx <span class="k">in</span> sorted_vocab.items()]
 
-                <div class="writeup-img-wrap">
-                    <img src="assets/exploit-output.png" alt="Exploit output" onerror="this.parentElement.style.display='none'">
-                    <div class="writeup-img-caption">Exploit execution output</div>
+top10 = sorted(comparison, key=<span class="k">lambda</span> x: x[<span class="mi">2</span>], reverse=<span class="nb">True</span>)[:<span class="mi">10</span>]
+<span class="nb">print</span>(<span class="s">"Top weights for 'secret' class:"</span>, top10)</pre>
                 </div>
 
                 <div class="terminal-output">
@@ -225,12 +284,129 @@
                         <span class="terminal-dot red"></span>
                         <span class="terminal-dot yellow"></span>
                         <span class="terminal-dot green"></span>
-                        <span>terminal</span>
+                        <span>output</span>
                     </div>
-                    <pre><span class="cmd">$ python exploit.py</span>
-<span class="out"><!-- [WRITEUP] Add terminal output here --></span>
-<span class="flag"><!-- [WRITEUP] Flag appears here --></span></pre>
+                    <pre><span class="out">Top weights for 'secret' class:
+[(12, 'banana', 5.336722), (87, 'orbit', 0.412...), (34, 'dark', 0.389...), ...]</span></pre>
                 </div>
+
+                <p class="writeup-p">
+                    The gap between <code>banana</code> at <code>5.34</code> and the next entry
+                    at <code>0.41</code> is a clear statistical anomaly — this word was injected
+                    deliberately. <strong>Word 1: <code>banana</code></strong>.
+                </p>
+
+                <h2 class="writeup-h2">Word 2 — base64 custom attribute</h2>
+                <p class="writeup-p">
+                    The <code>galaxy_</code> attribute does not belong to any standard sklearn estimator.
+                    It was added directly to the model object before serialisation as a covert data carrier.
+                    Decoding it from base64 is straightforward.
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">Python</span>
+                        <span class="code-block-file">word2.py</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre><span class="k">import</span> base64
+
+raw     = model.galaxy_               <span class="c"># bG92ZQ==</span>
+decoded = base64.b64decode(raw).decode(<span class="s">"utf-8"</span>)
+<span class="nb">print</span>(<span class="s">"galaxy_ raw:"</span>, raw)
+<span class="nb">print</span>(<span class="s">"galaxy_ decoded:"</span>, decoded)</pre>
+                </div>
+
+                <div class="terminal-output">
+                    <div class="terminal-output-header">
+                        <span class="terminal-dot red"></span>
+                        <span class="terminal-dot yellow"></span>
+                        <span class="terminal-dot green"></span>
+                        <span>output</span>
+                    </div>
+                    <pre><span class="out">galaxy_ raw:     bG92ZQ==
+galaxy_ decoded: love</span></pre>
+                </div>
+
+                <p class="writeup-p">
+                    <strong>Word 2: <code>love</code></strong>.
+                </p>
+
+                <h2 class="writeup-h2">Word 3 — ASCII integers in super_earth</h2>
+                <p class="writeup-p">
+                    Coefficients in a trained linear classifier are real-valued weights typically
+                    in the range <code>[-2, 2]</code>. Any integer greater than 1 is a red flag.
+                    Iterating over every coefficient and casting to <code>int</code>, then filtering
+                    for values <code>&gt; 1</code>, surfaces a suspicious sequence exclusively in
+                    the <code>super_earth</code> class.
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">Python</span>
+                        <span class="code-block-file">word3.py</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre>ascii_values = []
+
+<span class="k">for</span> i <span class="k">in</span> <span class="nb">range</span>(<span class="nb">len</span>(classes)):
+    <span class="k">for</span> j <span class="k">in</span> <span class="nb">range</span>(<span class="nb">len</span>(model.coef_[<span class="mi">0</span>])):
+        val = <span class="nb">int</span>(model.coef_[i][j])
+        <span class="k">if</span> val > <span class="mi">1</span>:
+            <span class="nb">print</span>(<span class="s">f"Class: </span>{classes[i]}<span class="s">, int value: </span>{val}<span class="s">"</span>)
+            <span class="k">if</span> classes[i] == <span class="s">"super_earth"</span>:
+                ascii_values.append(val)
+
+<span class="nb">print</span>(<span class="s">"ASCII values:"</span>, ascii_values)
+<span class="nb">print</span>(<span class="s">"Decoded:"</span>, <span class="s">""</span>.join(<span class="nb">chr</span>(v) <span class="k">for</span> v <span class="k">in</span> ascii_values))</pre>
+                </div>
+
+                <div class="terminal-output">
+                    <div class="terminal-output-header">
+                        <span class="terminal-dot red"></span>
+                        <span class="terminal-dot yellow"></span>
+                        <span class="terminal-dot green"></span>
+                        <span>output</span>
+                    </div>
+                    <pre><span class="out">Class: super_earth, int value: 99
+Class: super_earth, int value: 104
+Class: super_earth, int value: 105
+Class: super_earth, int value: 109
+Class: super_earth, int value: 112
+Class: super_earth, int value: 97
+Class: super_earth, int value: 110
+Class: super_earth, int value: 122
+Class: super_earth, int value: 101
+Class: super_earth, int value: 101
+
+ASCII values: [99, 104, 105, 109, 112, 97, 110, 122, 101, 101]
+Decoded: chimpanzee</span></pre>
+                </div>
+
+                <div class="callout callout-tip">
+                    <span class="callout-label">Tip</span>
+                    If you are not comfortable with Python's <code>chr()</code>, you can paste
+                    the integer sequence directly into
+                    <a href="https://gchq.github.io/CyberChef/#recipe=From_Decimal('Space',false)" target="_blank" rel="noopener" style="color:var(--cyan);">CyberChef → From Decimal</a>
+                    to reach the same result instantly.
+                </div>
+
+                <p class="writeup-p">
+                    <strong>Word 3: <code>chimpanzee</code></strong>.
+                </p>
+
+                <h2 class="writeup-h2">Assembling the flag</h2>
+                <p class="writeup-p">
+                    The three words are <code>chimpanzee</code>, <code>love</code>, and <code>banana</code>.
+                    Ordered into a grammatically coherent phrase — <em>chimpanzee love banana</em> — and
+                    joined with underscores gives the final flag.
+                </p>
             </section>
 
             <!-- Flag -->
@@ -240,7 +416,7 @@
                     <svg class="flag-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
                     <div class="flag-box-content">
                         <div class="flag-box-label">Flag</div>
-                        <div class="flag-box-value"><!-- [WRITEUP] AUVERGNE{your_flag_here} --></div>
+                        <div class="flag-box-value">ZiTF{chimpanzee_love_banana}</div>
                     </div>
                 </div>
             </section>
@@ -249,11 +425,22 @@
             <section class="writeup-section" id="conclusion">
                 <div class="writeup-section-title">Conclusion</div>
                 <p class="writeup-p">
-                    <!-- [WRITEUP] Lessons learned, what was interesting, what could be done differently -->
+                    This challenge demonstrates that a serialised ML model is not just weights — it is
+                    a Python object graph. Anything that can be stored in a Python object can be hidden
+                    inside a <code>.pkl</code> file: custom attributes, unusual coefficient values, or
+                    encoded strings. The standard model inspection workflow (print <code>__dict__</code>,
+                    inspect <code>coef_</code>, check the vocabulary) is enough to surface all of it.
+                </p>
+                <p class="writeup-p">
+                    From a defensive standpoint, this is also why blindly loading pickle files from
+                    untrusted sources is dangerous — they can carry arbitrary Python objects, not just
+                    model weights.
                 </p>
                 <div class="callout callout-tip">
                     <span class="callout-label">Key takeaway</span>
-                    <!-- [WRITEUP] One key technical lesson from this challenge -->
+                    When auditing an ML model, always inspect <code>model.__dict__</code> for
+                    non-standard attributes, sort coefficients to catch statistical outliers, and treat
+                    any unusually large integer in a weight matrix as a potential ASCII payload.
                 </div>
             </section>
 
@@ -300,11 +487,11 @@
                     </div>
                     <div class="meta-row">
                         <span class="meta-row-key">Difficulty</span>
-                        <span class="meta-row-val"><!-- [WRITEUP] Easy / Medium / Hard --></span>
+                        <span class="meta-row-val">Medium</span>
                     </div>
                     <div class="meta-row">
-                        <span class="meta-row-key">Points</span>
-                        <span class="meta-row-val"><!-- [WRITEUP] e.g. 500 --></span>
+                        <span class="meta-row-key">Flag</span>
+                        <span class="meta-row-val" style="color:var(--gold); font-size:0.7rem;">ZiTF{...}</span>
                     </div>
                 </div>
             </div>
@@ -314,17 +501,11 @@
                 <div class="sidebar-block-title">Tools Used</div>
                 <div class="sidebar-block-body">
                     <div style="display:flex; flex-direction:column; gap:0.4rem;">
-                        <!-- [WRITEUP] Add/remove tools as needed -->
-                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;">
-                            <span style="color:var(--green);">▸</span> Python 3
-                        </span>
-                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;">
-                            <span style="color:var(--green);">▸</span> PyTorch
-                        </span>
-                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;">
-                            <span style="color:var(--green);">▸</span> NumPy
-                        </span>
-                        <!-- [WRITEUP] Add more tools -->
+                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;"><span style="color:var(--green);">▸</span> Python 3</span>
+                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;"><span style="color:var(--green);">▸</span> pickle</span>
+                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;"><span style="color:var(--green);">▸</span> scikit-learn</span>
+                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;"><span style="color:var(--green);">▸</span> base64</span>
+                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;"><span style="color:var(--green);">▸</span> CyberChef</span>
                     </div>
                 </div>
             </div>
@@ -334,11 +515,10 @@
                 <div class="sidebar-block-title">Challenge Files</div>
                 <div class="sidebar-block-body">
                     <div class="file-list">
-                        <!-- [WRITEUP] Add actual challenge files here -->
-                        <a href="files/auvergnahack-2026-ml/challenge.zip" class="file-item">
+                        <a href="files/gravitational_model2.pkl" class="file-item">
                             <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            challenge.zip
-                            <span class="file-size"><!-- size --></span>
+                            gravitational_model2.pkl
+                            <span class="file-size">.pkl</span>
                         </a>
                     </div>
                 </div>
@@ -363,11 +543,9 @@
     </footer>
 
     <script>
-        // Nav scroll
         const nav = document.getElementById('nav');
         window.addEventListener('scroll', () => nav.classList.toggle('scrolled', window.scrollY > 50));
 
-        // Mobile nav
         document.getElementById('navToggle').addEventListener('click', () => {
             document.getElementById('mobileNav').classList.toggle('active');
         });
@@ -375,7 +553,6 @@
             l.addEventListener('click', () => document.getElementById('mobileNav').classList.remove('active'));
         });
 
-        // Active ToC on scroll
         const sections = document.querySelectorAll('.writeup-section[id]');
         const tocLinks = document.querySelectorAll('.toc-list a');
         const observer = new IntersectionObserver(entries => {
@@ -389,7 +566,6 @@
         }, { rootMargin: '-20% 0px -70% 0px' });
         sections.forEach(s => observer.observe(s));
 
-        // Copy code
         function copyCode(btn) {
             const pre = btn.closest('.code-block').querySelector('pre');
             navigator.clipboard.writeText(pre.innerText).then(() => {
