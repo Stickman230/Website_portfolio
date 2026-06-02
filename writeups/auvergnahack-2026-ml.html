@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Machine Learning Challenge — AuvergneHack 2026 | Maxime Reynaud</title>
+    <meta name="description" content="CTF writeup for the AuvergneHack 2026 Machine Learning challenge by Maxime Reynaud.">
+    <meta name="theme-color" content="#0a0a0f">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230a0a0f'/><text x='50' y='66' font-family='monospace' font-size='48' font-weight='bold' fill='%2300ff41' text-anchor='middle'>MR</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../writeups.css">
+</head>
+<body class="writeup-page">
+
+    <!-- Navigation -->
+    <nav class="nav" id="nav">
+        <div class="nav-logo">
+            <a href="../index.html" style="text-decoration:none; display:flex; align-items:center; gap:0.25rem;">
+                <span class="nav-logo-bracket">[</span>
+                <span class="nav-logo-text">MR</span>
+                <span class="nav-logo-bracket">]</span>
+            </a>
+        </div>
+        <div class="nav-links">
+            <a href="../index.html#about"        class="nav-link">About</a>
+            <a href="../index.html#experience"   class="nav-link">Experience</a>
+            <a href="../index.html#projects"     class="nav-link">Projects</a>
+            <a href="../index.html#competitions" class="nav-link">CTF</a>
+            <a href="../writeups.html"           class="nav-link" style="color:var(--green);">Writeups</a>
+            <a href="../index.html#contact"      class="nav-link">Contact</a>
+        </div>
+        <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+            <span></span><span></span><span></span>
+        </button>
+    </nav>
+
+    <!-- Mobile Nav -->
+    <div class="mobile-nav" id="mobileNav">
+        <a href="../index.html#about"        class="mobile-nav-link">About</a>
+        <a href="../index.html#experience"   class="mobile-nav-link">Experience</a>
+        <a href="../index.html#projects"     class="mobile-nav-link">Projects</a>
+        <a href="../index.html#competitions" class="mobile-nav-link">CTF</a>
+        <a href="../writeups.html"           class="mobile-nav-link">Writeups</a>
+        <a href="../index.html#contact"      class="mobile-nav-link">Contact</a>
+    </div>
+
+    <!-- Challenge Header -->
+    <div class="writeup-challenge-header">
+        <div class="writeup-challenge-inner">
+            <nav class="breadcrumb">
+                <a href="../index.html">Home</a>
+                <span class="breadcrumb-sep">/</span>
+                <a href="../writeups.html">Writeups</a>
+                <span class="breadcrumb-sep">/</span>
+                <span>AuvergneHack 2026</span>
+            </nav>
+            <div class="writeup-challenge-tags" style="margin-top:1.2rem;">
+                <span class="writeup-challenge-ctf">AuvergneHack 2026</span>
+                <span class="cat-badge cat-ml">Machine Learning</span>
+            </div>
+            <h1 class="writeup-challenge-title">Machine Learning Challenge</h1>
+            <div class="writeup-challenge-meta-row">
+                <div class="writeup-meta-item">
+                    <span class="writeup-meta-key">Date</span>
+                    <span class="writeup-meta-val">May 2026</span>
+                </div>
+                <div class="writeup-meta-item">
+                    <span class="writeup-meta-key">Result</span>
+                    <span class="writeup-meta-val accent">3rd Place</span>
+                </div>
+                <div class="writeup-meta-item">
+                    <span class="writeup-meta-key">Category</span>
+                    <span class="writeup-meta-val">Machine Learning</span>
+                </div>
+                <div class="writeup-meta-item">
+                    <span class="writeup-meta-key">Author</span>
+                    <span class="writeup-meta-val">Maxime Reynaud</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two-column layout -->
+    <div class="writeup-layout">
+
+        <!-- Main content -->
+        <article class="writeup-content">
+
+            <!-- Overview -->
+            <section class="writeup-section" id="overview">
+                <div class="writeup-section-title">Overview</div>
+                <p class="writeup-p">
+                    <!-- [WRITEUP] Replace with challenge description -->
+                    Add your challenge description here. What was the goal? What were you given?
+                    What made this challenge interesting or unique?
+                </p>
+                <p class="writeup-p">
+                    <!-- [WRITEUP] Add more context if needed -->
+                </p>
+            </section>
+
+            <!-- Challenge Description -->
+            <section class="writeup-section" id="challenge">
+                <div class="writeup-section-title">Challenge Description</div>
+                <div class="callout callout-info">
+                    <span class="callout-label">Challenge prompt</span>
+                    <!-- [WRITEUP] Paste the exact challenge description from the CTF platform here -->
+                    Paste the challenge description here.
+                </div>
+                <p class="writeup-p">
+                    <!-- [WRITEUP] What files / services were provided? -->
+                </p>
+
+                <!-- Challenge files list (matches sidebar) -->
+                <div class="writeup-img-wrap" style="display:none" id="challenge-screenshot-1">
+                    <img src="assets/challenge-description.png" alt="Challenge description screenshot">
+                    <div class="writeup-img-caption">Challenge description on the CTF platform</div>
+                </div>
+            </section>
+
+            <!-- Initial Analysis -->
+            <section class="writeup-section" id="analysis">
+                <div class="writeup-section-title">Initial Analysis</div>
+                <p class="writeup-p">
+                    <!-- [WRITEUP] What did you do first? Inspect files, run the model, explore the dataset? -->
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">Python</span>
+                        <span class="code-block-file">inspect.py</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre><span class="c"># [WRITEUP] Replace with your actual analysis script</span>
+<span class="k">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="k">import</span> <span class="n">torch</span>
+
+<span class="c"># Load the provided model / dataset</span>
+<span class="n">model</span> = <span class="n">torch</span>.<span class="n">load</span>(<span class="s">'model.pt'</span>)
+<span class="nb">print</span>(<span class="n">model</span>)</pre>
+                </div>
+
+                <div class="writeup-img-wrap">
+                    <img src="assets/initial-analysis.png" alt="Initial analysis output" onerror="this.parentElement.style.display='none'">
+                    <div class="writeup-img-caption">Initial model inspection output</div>
+                </div>
+            </section>
+
+            <!-- Methodology -->
+            <section class="writeup-section" id="methodology">
+                <div class="writeup-section-title">Methodology</div>
+                <p class="writeup-p">
+                    <!-- [WRITEUP] Describe your overall approach and reasoning -->
+                </p>
+
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">01</div>
+                        <div class="step-body">
+                            <div class="step-title"><!-- [WRITEUP] Step title --></div>
+                            <div class="step-desc"><!-- [WRITEUP] Step description --></div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">02</div>
+                        <div class="step-body">
+                            <div class="step-title"><!-- [WRITEUP] Step title --></div>
+                            <div class="step-desc"><!-- [WRITEUP] Step description --></div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">03</div>
+                        <div class="step-body">
+                            <div class="step-title"><!-- [WRITEUP] Step title --></div>
+                            <div class="step-desc"><!-- [WRITEUP] Step description --></div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">04</div>
+                        <div class="step-body">
+                            <div class="step-title"><!-- [WRITEUP] Step title --></div>
+                            <div class="step-desc"><!-- [WRITEUP] Step description --></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Implementation -->
+            <section class="writeup-section" id="implementation">
+                <div class="writeup-section-title">Implementation</div>
+                <p class="writeup-p">
+                    <!-- [WRITEUP] Walk through your exploit/solution code -->
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">Python</span>
+                        <span class="code-block-file">exploit.py</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre><span class="c"># [WRITEUP] Replace with your actual exploit script</span>
+<span class="k">import</span> <span class="n">torch</span>
+<span class="k">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+
+<span class="c"># Your solution here</span>
+</pre>
+                </div>
+
+                <div class="writeup-img-wrap">
+                    <img src="assets/exploit-output.png" alt="Exploit output" onerror="this.parentElement.style.display='none'">
+                    <div class="writeup-img-caption">Exploit execution output</div>
+                </div>
+
+                <div class="terminal-output">
+                    <div class="terminal-output-header">
+                        <span class="terminal-dot red"></span>
+                        <span class="terminal-dot yellow"></span>
+                        <span class="terminal-dot green"></span>
+                        <span>terminal</span>
+                    </div>
+                    <pre><span class="cmd">$ python exploit.py</span>
+<span class="out"><!-- [WRITEUP] Add terminal output here --></span>
+<span class="flag"><!-- [WRITEUP] Flag appears here --></span></pre>
+                </div>
+            </section>
+
+            <!-- Flag -->
+            <section class="writeup-section" id="flag">
+                <div class="writeup-section-title">Flag</div>
+                <div class="flag-box">
+                    <svg class="flag-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                    <div class="flag-box-content">
+                        <div class="flag-box-label">Flag</div>
+                        <div class="flag-box-value"><!-- [WRITEUP] AUVERGNE{your_flag_here} --></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Conclusion -->
+            <section class="writeup-section" id="conclusion">
+                <div class="writeup-section-title">Conclusion</div>
+                <p class="writeup-p">
+                    <!-- [WRITEUP] Lessons learned, what was interesting, what could be done differently -->
+                </p>
+                <div class="callout callout-tip">
+                    <span class="callout-label">Key takeaway</span>
+                    <!-- [WRITEUP] One key technical lesson from this challenge -->
+                </div>
+            </section>
+
+        </article>
+
+        <!-- Sidebar -->
+        <aside class="writeup-sidebar">
+
+            <!-- Table of contents -->
+            <div class="sidebar-block">
+                <div class="sidebar-block-title">Contents</div>
+                <div class="sidebar-block-body">
+                    <ul class="toc-list">
+                        <li><a href="#overview"><span class="toc-num">01</span> Overview</a></li>
+                        <li><a href="#challenge"><span class="toc-num">02</span> Challenge Description</a></li>
+                        <li><a href="#analysis"><span class="toc-num">03</span> Initial Analysis</a></li>
+                        <li><a href="#methodology"><span class="toc-num">04</span> Methodology</a></li>
+                        <li><a href="#implementation"><span class="toc-num">05</span> Implementation</a></li>
+                        <li><a href="#flag"><span class="toc-num">06</span> Flag</a></li>
+                        <li><a href="#conclusion"><span class="toc-num">07</span> Conclusion</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Metadata -->
+            <div class="sidebar-block">
+                <div class="sidebar-block-title">Challenge Info</div>
+                <div class="sidebar-block-body" style="padding:0.8rem 1rem;">
+                    <div class="meta-row">
+                        <span class="meta-row-key">CTF</span>
+                        <span class="meta-row-val">AuvergneHack 2026</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-row-key">Category</span>
+                        <span class="meta-row-val"><span class="cat-badge cat-ml" style="font-size:0.6rem;">ML</span></span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-row-key">Date</span>
+                        <span class="meta-row-val">May 2026</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-row-key">Team result</span>
+                        <span class="meta-row-val" style="color:var(--bronze);">3rd Place</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-row-key">Difficulty</span>
+                        <span class="meta-row-val"><!-- [WRITEUP] Easy / Medium / Hard --></span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-row-key">Points</span>
+                        <span class="meta-row-val"><!-- [WRITEUP] e.g. 500 --></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tools used -->
+            <div class="sidebar-block">
+                <div class="sidebar-block-title">Tools Used</div>
+                <div class="sidebar-block-body">
+                    <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                        <!-- [WRITEUP] Add/remove tools as needed -->
+                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;">
+                            <span style="color:var(--green);">▸</span> Python 3
+                        </span>
+                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;">
+                            <span style="color:var(--green);">▸</span> PyTorch
+                        </span>
+                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;">
+                            <span style="color:var(--green);">▸</span> NumPy
+                        </span>
+                        <!-- [WRITEUP] Add more tools -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Challenge files -->
+            <div class="sidebar-block">
+                <div class="sidebar-block-title">Challenge Files</div>
+                <div class="sidebar-block-body">
+                    <div class="file-list">
+                        <!-- [WRITEUP] Add actual challenge files here -->
+                        <a href="files/auvergnahack-2026-ml/challenge.zip" class="file-item">
+                            <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            challenge.zip
+                            <span class="file-size"><!-- size --></span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <span class="footer-text">
+                    <a href="../writeups.html" style="color:var(--green); text-decoration:none; font-family:var(--font-mono); font-size:0.8rem;">
+                        ← Back to Writeups
+                    </a>
+                </span>
+                <span class="footer-divider">|</span>
+                <span class="footer-text">HACK.LEARN.COMPETE</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Nav scroll
+        const nav = document.getElementById('nav');
+        window.addEventListener('scroll', () => nav.classList.toggle('scrolled', window.scrollY > 50));
+
+        // Mobile nav
+        document.getElementById('navToggle').addEventListener('click', () => {
+            document.getElementById('mobileNav').classList.toggle('active');
+        });
+        document.querySelectorAll('.mobile-nav-link').forEach(l => {
+            l.addEventListener('click', () => document.getElementById('mobileNav').classList.remove('active'));
+        });
+
+        // Active ToC on scroll
+        const sections = document.querySelectorAll('.writeup-section[id]');
+        const tocLinks = document.querySelectorAll('.toc-list a');
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    tocLinks.forEach(l => l.classList.remove('active'));
+                    const active = document.querySelector(`.toc-list a[href="#${entry.target.id}"]`);
+                    if (active) active.classList.add('active');
+                }
+            });
+        }, { rootMargin: '-20% 0px -70% 0px' });
+        sections.forEach(s => observer.observe(s));
+
+        // Copy code
+        function copyCode(btn) {
+            const pre = btn.closest('.code-block').querySelector('pre');
+            navigator.clipboard.writeText(pre.innerText).then(() => {
+                btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg> copied';
+                setTimeout(() => {
+                    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> copy';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

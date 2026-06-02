@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTF Writeups | Maxime Reynaud</title>
+    <meta name="description" content="CTF writeups by Maxime Reynaud - methodology, tools, and solutions for cybersecurity competitions.">
+    <meta name="theme-color" content="#0a0a0f">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230a0a0f'/><text x='50' y='66' font-family='monospace' font-size='48' font-weight='bold' fill='%2300ff41' text-anchor='middle'>MR</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="writeups.css">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="nav" id="nav">
+        <div class="nav-logo">
+            <a href="index.html" style="text-decoration:none; display:flex; align-items:center; gap:0.25rem;">
+                <span class="nav-logo-bracket">[</span>
+                <span class="nav-logo-text">MR</span>
+                <span class="nav-logo-bracket">]</span>
+            </a>
+        </div>
+        <div class="nav-links">
+            <a href="index.html#about"       class="nav-link">About</a>
+            <a href="index.html#experience"  class="nav-link">Experience</a>
+            <a href="index.html#projects"    class="nav-link">Projects</a>
+            <a href="index.html#competitions"class="nav-link">CTF</a>
+            <a href="writeups.html"          class="nav-link" style="color:var(--green);">Writeups</a>
+            <a href="index.html#contact"     class="nav-link">Contact</a>
+        </div>
+        <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+            <span></span><span></span><span></span>
+        </button>
+    </nav>
+
+    <!-- Mobile Nav -->
+    <div class="mobile-nav" id="mobileNav">
+        <a href="index.html#about"        class="mobile-nav-link">About</a>
+        <a href="index.html#experience"   class="mobile-nav-link">Experience</a>
+        <a href="index.html#projects"     class="mobile-nav-link">Projects</a>
+        <a href="index.html#competitions" class="mobile-nav-link">CTF</a>
+        <a href="writeups.html"           class="mobile-nav-link">Writeups</a>
+        <a href="index.html#contact"      class="mobile-nav-link">Contact</a>
+    </div>
+
+    <!-- Hero -->
+    <section class="writeups-hero">
+        <div class="writeups-hero-content">
+            <div class="writeups-hero-tag">$ cat writeups/index.md</div>
+            <h1 class="writeups-hero-title">CTF <span>WRITEUPS</span></h1>
+            <p class="writeups-hero-sub">Methodology, tools and solutions from cybersecurity competitions.</p>
+            <div class="writeups-stats">
+                <div class="writeups-stat">
+                    <span class="writeups-stat-value">1</span>
+                    <span class="writeups-stat-label">Writeups</span>
+                </div>
+                <div class="writeups-stat">
+                    <span class="writeups-stat-value">11+</span>
+                    <span class="writeups-stat-label">CTFs competed</span>
+                </div>
+                <div class="writeups-stat">
+                    <span class="writeups-stat-value">ML</span>
+                    <span class="writeups-stat-label">Latest category</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Filters -->
+    <div class="writeups-filters container" style="max-width:900px;">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="ml">Machine Learning</button>
+        <button class="filter-btn" data-filter="web">Web</button>
+        <button class="filter-btn" data-filter="pwn">Pwn</button>
+        <button class="filter-btn" data-filter="rev">Reverse</button>
+        <button class="filter-btn" data-filter="crypto">Crypto</button>
+        <button class="filter-btn" data-filter="osint">OSINT</button>
+        <button class="filter-btn" data-filter="forensics">Forensics</button>
+        <button class="filter-btn" data-filter="misc">Misc</button>
+    </div>
+
+    <!-- Writeup cards -->
+    <div class="writeups-grid">
+
+        <a href="writeups/auvergnahack-2026-ml.html" class="writeup-card" data-category="ml">
+            <div class="writeup-card-top">
+                <span class="writeup-ctf-name">AuvergneHack 2026</span>
+                <span class="cat-badge cat-ml">Machine Learning</span>
+            </div>
+            <div class="writeup-card-title">Machine Learning Challenge</div>
+            <div class="writeup-card-desc">
+                Exploiting a machine learning model in a CTF context — model analysis, adversarial techniques, and flag extraction methodology.
+            </div>
+            <div class="writeup-card-footer">
+                <div class="writeup-card-meta">
+                    <span class="writeup-rank-badge">3rd Place</span>
+                    <span class="writeup-card-date">May 2026</span>
+                </div>
+                <span class="writeup-read-link">
+                    Read
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </span>
+            </div>
+        </a>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <span class="footer-text">Maxime Reynaud &copy; 2026</span>
+                <span class="footer-divider">|</span>
+                <span class="footer-text">HACK.LEARN.COMPETE</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Nav scroll effect (reused from main)
+        const nav = document.getElementById('nav');
+        window.addEventListener('scroll', () => {
+            nav.classList.toggle('scrolled', window.scrollY > 50);
+        });
+
+        // Mobile nav toggle
+        document.getElementById('navToggle').addEventListener('click', () => {
+            document.getElementById('mobileNav').classList.toggle('active');
+        });
+        document.querySelectorAll('.mobile-nav-link').forEach(l => {
+            l.addEventListener('click', () => document.getElementById('mobileNav').classList.remove('active'));
+        });
+
+        // Category filter
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const filter = btn.dataset.filter;
+                document.querySelectorAll('.writeup-card').forEach(card => {
+                    card.style.display = (filter === 'all' || card.dataset.category === filter) ? 'flex' : 'none';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
