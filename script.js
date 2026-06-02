@@ -585,8 +585,9 @@
             .querySelectorAll('.nav-link, .mobile-nav-link')
             .forEach((link) => {
                 link.addEventListener("click", (e) => {
-                    e.preventDefault();
                     const targetId = link.getAttribute("href");
+                    if (!targetId.startsWith("#")) return;
+                    e.preventDefault();
                     const target = document.querySelector(targetId);
                     if (target) {
                         gsap.to(window, {
