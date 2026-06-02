@@ -22,6 +22,7 @@
     --purple: #8b5cf6;
     --purple-glow: rgba(139, 92, 246, 0.15);
     --gold: #fbbf24;
+    --silver: #c0c0c0;
     --bronze: #cd7f32;
     --red: #ff3b3b;
     --border: rgba(255, 255, 255, 0.06);
@@ -1146,6 +1147,16 @@ a {
     text-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
 }
 
+.competition-card.silver {
+    border-color: rgba(192, 192, 192, 0.2);
+}
+
+.competition-card.silver .competition-rank {
+    color: var(--silver);
+    border-color: var(--silver);
+    text-shadow: 0 0 10px rgba(192, 192, 192, 0.3);
+}
+
 .competition-card.bronze .competition-rank {
     color: var(--bronze);
     border-color: var(--bronze);
@@ -1773,22 +1784,4 @@ a {
         width: 30px;
         height: 30px;
     }
-}
-
-/* ---------- Flag Codes (cross-platform replacement for emoji flags) ---------- */
-.flag-code {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    border: 2px solid var(--green);
-    background: rgba(0, 255, 65, 0.08);
-    font-family: var(--font-mono);
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: var(--green);
-    letter-spacing: 1px;
-    text-shadow: 0 0 10px var(--green-glow);
 }
