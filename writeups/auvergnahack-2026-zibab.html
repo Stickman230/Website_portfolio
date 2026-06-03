@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zibab | AuvergnHack 2026</title>
+    <meta name="description" content="CTF writeup: decoding Bluetooth HID keystrokes from a merged pcapng to recover AES-256-GCM keys and decrypt a zibab payload — AuvergnHack CTF 2026">
+    <meta name="theme-color" content="#0a0a0f">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%230a0a0f'/><text x='50' y='66' font-family='monospace' font-size='48' font-weight='bold' fill='%2300ff41' text-anchor='middle'>MR</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../writeups.css">
+</head>
+<body class="writeup-page">
+
+    <!-- Navigation -->
+    <nav class="nav" id="nav">
+        <div class="nav-logo">
+            <a href="../index.html" style="text-decoration:none; display:flex; align-items:center; gap:0.25rem;">
+                <span class="nav-logo-bracket">[</span>
+                <span class="nav-logo-text">MR</span>
+                <span class="nav-logo-bracket">]</span>
+            </a>
+        </div>
+        <div class="nav-links">
+            <a href="../index.html#about"        class="nav-link">About</a>
+            <a href="../index.html#experience"   class="nav-link">Experience</a>
+            <a href="../index.html#projects"     class="nav-link">Projects</a>
+            <a href="../index.html#competitions" class="nav-link">CTF</a>
+            <a href="../writeups.html"           class="nav-link" style="color:var(--green);">Writeups</a>
+            <a href="../index.html#contact"      class="nav-link">Contact</a>
+        </div>
+        <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+            <span></span><span></span><span></span>
+        </button>
+    </nav>
+
+    <!-- Mobile Nav -->
+    <div class="mobile-nav" id="mobileNav">
+        <a href="../index.html#about"        class="mobile-nav-link">About</a>
+        <a href="../index.html#experience"   class="mobile-nav-link">Experience</a>
+        <a href="../index.html#projects"     class="mobile-nav-link">Projects</a>
+        <a href="../index.html#competitions" class="mobile-nav-link">CTF</a>
+        <a href="../writeups.html"           class="mobile-nav-link">Writeups</a>
+        <a href="../index.html#contact"      class="mobile-nav-link">Contact</a>
+    </div>
+
+    <!-- Challenge Header -->
+    <div class="writeup-challenge-header">
+        <div class="writeup-challenge-inner">
+            <nav class="breadcrumb">
+                <a href="../index.html">Home</a>
+                <span class="breadcrumb-sep">/</span>
+                <a href="../writeups.html">Writeups</a>
+                <span class="breadcrumb-sep">/</span>
+                <span>AuvergnHack 2026</span>
+            </nav>
+            <div class="writeup-challenge-tags" style="margin-top:1.2rem;">
+                <span class="writeup-challenge-ctf">AuvergnHack 2026</span>
+                <span class="cat-badge cat-hardware">Hardware</span>
+            </div>
+            <h1 class="writeup-challenge-title">Zibab</h1>
+            <div class="writeup-challenge-meta-row">
+                <div class="writeup-meta-item">
+                    <span class="writeup-meta-key">Date</span>
+                    <span class="writeup-meta-val">May 2026</span>
+                </div>
+                <div class="writeup-meta-item">
+                    <span class="writeup-meta-key">Result</span>
+                    <span class="writeup-meta-val accent">3rd Place</span>
+                </div>
+                <div class="writeup-meta-item">
+                    <span class="writeup-meta-key">Category</span>
+                    <span class="writeup-meta-val">Hardware</span>
+                </div>
+                <div class="writeup-meta-item">
+                    <span class="writeup-meta-key">Flag</span>
+                    <span class="writeup-meta-val">ZiTF{Fra1seFr4mbo1seMyrt1ll3OnVaB1enMang3r}</span>
+                </div>
+                <div class="writeup-meta-item">
+                    <span class="writeup-meta-key">Author</span>
+                    <span class="writeup-meta-val">Maxime Reynaud</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two-column layout -->
+    <div class="writeup-layout">
+
+        <!-- Main content -->
+        <article class="writeup-content">
+
+            <!-- Overview -->
+            <section class="writeup-section" id="overview">
+                <div class="writeup-section-title">Overview</div>
+                <p class="writeup-p">
+                    A <code>.pcapng</code> file with a hardware category label. The instinct is to look for USB,
+                    Bluetooth, or serial traffic rather than classic network exploitation. This challenge hides
+                    its real attack surface inside a merged capture containing both ordinary IRC network traffic
+                    and a Bluetooth keyboard snoop file.
+                </p>
+                <p class="writeup-p">
+                    The network side is deliberately designed to distract: IRC messages reference a secret file
+                    transfer tool called <code>zibab</code> and drop a Pastebin link promising credentials.
+                    That Pastebin is empty and is a dead end. The actual secret material is typed live on a Bluetooth
+                    keyboard and leaked through the HID reports in the second half of the capture.
+                </p>
+                <p class="writeup-p">
+                    You can download and try the challenge using the <code>capture.pcapng</code> file available
+                    on the right hand side.
+                </p>
+            </section>
+
+            <!-- Challenge Description -->
+            <section class="writeup-section" id="challenge">
+                <div class="writeup-section-title">Challenge Description</div>
+                <div class="callout callout-info">
+                    <span class="callout-label">Challenge prompt</span>
+                    Check this out, bro, it's time! I did my part of the work, here's the capture.
+                    It was a pain in the ass to get it, now deal with it and come up with something interesting.
+                </div>
+                <div class="callout callout-tip">
+                    <span class="callout-label">Definitions</span>
+                    <strong>pcapng</strong>: Packet capture next-generation format. Unlike plain <code>.pcap</code>,
+                    it supports multiple interfaces and custom metadata blocks, which allows merging captures
+                    from different sources into a single file.
+                    <br><br>
+                    <strong>Bluetooth HID</strong>: Human Interface Device profile over Bluetooth. A keyboard
+                    sends one HID input report per key event containing a modifier byte and up to six keycodes,
+                    identical in structure to wired USB HID reports.
+                    <br><br>
+                    <strong>AES-256-GCM</strong>: Authenticated encryption scheme. Takes a 256-bit key and a
+                    12-byte nonce; produces ciphertext and a 16-byte authentication tag appended at the end.
+                    <br><br>
+                    <strong>L2CAP</strong>: Logical Link Control and Adaptation Protocol is the Bluetooth layer 
+                    responsible for carrying higher-level protocols over logical channels. 
+                    In this capture, the HID keyboard reports are transported over a L2CAP channel
+                </div>
+                <div class="callout callout-warn">
+                    <span class="callout-label">Security warning</span>
+                    Bluetooth keyboard traffic is transmitted in plaintext by default on most devices unless
+                    pairing enforces encryption. Any nearby receiver can reconstruct every keystroke, including
+                    passwords and keys typed during a session.
+                </div>
+            </section>
+
+            <!-- Identifying the Capture -->
+            <section class="writeup-section" id="analysis">
+                <div class="writeup-section-title">Identifying the Capture</div>
+                <p class="writeup-p">
+                    Before opening Wireshark, we want to run <code>strings</code> on the file to reveals 
+                    any metadata items that might be relevant, here that immediately tells us what approach we should go for:
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">Bash</span>
+                        <span class="code-block-file">inspect.sh</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre>strings capture.pcapng | grep -i "File"</pre>
+                </div>
+
+                <div class="terminal-output">
+                    <div class="terminal-output-header">
+                        <span class="terminal-dot red"></span>
+                        <span class="terminal-dot yellow"></span>
+                        <span class="terminal-dot green"></span>
+                        <span>output</span>
+                    </div>
+                    <pre><span class="cmd">$ bash inspect.sh</span>
+<span class="out">File created by merging:
+File1: bt_keyboard.snoop
+File2: net_traffic.pcap</span></pre>
+                </div>
+
+                <p class="writeup-p">
+                    The capture is a merge of two sources: a Bluetooth keyboard snoop and a standard network
+                    capture. This immediately gives us two independent directions to investigate and confirms
+                    that the hardware component of this challenge is the Bluetooth keyboard traffic.
+                </p>
+            </section>
+
+            <!-- Rabbit Hole -->
+            <section class="writeup-section" id="rabbithole">
+                <div class="writeup-section-title">The Network Rabbit Hole</div>
+                <p class="writeup-p">
+                    We then fire up Wireshark and scroll through this very big network capture. Nothing stands out to much here...
+                    After doomscroling this capture for a few minutes, we decide to start using <i>display filters</i> and start filtering 
+                    on <code>tcp, http, irc</code> and <code>bluetooth</code>. This first reveals an intresting IRC conversation on the
+                    network side of the capture. The messages establish a story with two users, one being <code>192.168.122.223</code> talking 
+                    to the server on <code>192.168.122.1</code> probably redirecting trafic to another user hidden from this capture. 
+                    They have a chat around a tool called <code>zibab</code> and drop what looks like a credential link:
+                </p>
+
+                <img src="screenshots/AuvergnHack2026/General_IRC.png" alt="Wireshark IRC traffic overview" class="writeup-img">
+                <div class="writeup-img-caption">IRC packets visible in the network traffic portion of the capture</div>
+
+                <img src="screenshots/AuvergnHack2026/zibab_install.png" alt="IRC message mentioning zibab" class="writeup-img">
+                <div class="writeup-img-caption">IRC message: "yep i have, do u have zibab install?"</div>
+
+                <img src="screenshots/AuvergnHack2026/Pastebin_rabithole.png" alt="IRC message with Pastebin link" class="writeup-img">
+                <div class="writeup-img-caption">IRC message dropping a Pastebin link as supposed credentials</div>
+
+                <p class="writeup-p">
+                    Because love rabit holes :(, we follow the Pastebin link that leads nowhere (the page returns a 404):
+                </p>
+
+                <img src="screenshots/AuvergnHack2026/pastebin_404.png" alt="Pastebin 404 page" class="writeup-img">
+                <div class="writeup-img-caption">The Pastebin is intentionally empty, a designed rabbit hole</div>
+
+                <div class="callout callout-warn">
+                    <span class="callout-label">Post challenge reflexion</span>
+                    The IRC story is designed to make you chase credentials on Pastebin. The actual
+                    credentials are never sent over the network, they are typed locally on a Bluetooth
+                    keyboard. The correct path is to ignore Pastebin and decode the HID keystroke capture. 
+                    That's the hardware part !!!
+                </div>
+
+                <p class="writeup-p">
+                    This maps neatly to the file structure found earlier:
+                    <code>net_traffic.pcap</code> carries the story, initial information and a bait.
+                    We assume that <code>bt_keyboard.snoop</code> carries the real secret, but this 
+                    zibab tool is also the name of the challenge so it is not here randomly.
+                </p>
+            </section>
+
+            <!-- Understanding zibab -->
+            <section class="writeup-section" id="zibab">
+                <div class="writeup-section-title">Understanding zibab</div>
+                <p class="writeup-p">
+                    The IRC conversation names the tool explicitly. A quick search (it took me to long to find to admit) finds the public
+                    <a href="https://github.com/Babidiii/zibab" target="_blank" rel="noopener" style="color:var(--cyan);">GitHub Tool repo</a>.
+                    <code>zibab</code> ships two binaries: <code>zibabc</code> (client) and <code>zibabs</code> (server).
+                    It transfers files over TCP using AES-256-GCM encryption, defaulting to port <code>7070</code>.
+                </p>
+                <p class="writeup-p">
+                    The client config lives at <code>~/.config/zibab/config.client.toml</code> and exposes
+                    the crypto fields that drive key derivation:
+                </p>
+                <img src="screenshots/AuvergnHack2026/zibab_repo.png" alt="zibab github repo" class="writeup-img">
+                <div class="writeup-img-caption">The zibab github repo README.md</div>
+
+                <p class="writeup-p">
+                    Using the example <code>example/client.config.toml</code> in the github repository,
+                    we can reconstruct the structure and consider the missing fields:
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">TOML</span>
+                        <span class="code-block-file">config.client.toml</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre>[crypto]
+algorithm         = <span class="s">"aes-256-gcm"</span>
+kdf               = <span class="s">"sha256"</span>
+key_hint          = <span class="s">"derived"</span>
+nonce_strategy    = <span class="s">"iv_prefix_padded"</span>
+salt_hex          = <span class="s">""</span>
+pepper_hex        = <span class="s">""</span>
+iv_prefix_hex     = <span class="s">""</span></pre>
+                </div>
+
+                <p class="writeup-p">
+                    The key derivation concatenates the three string values and hashes them with SHA-256:
+                    <code>SHA256(salt_hex + pepper_hex + iv_prefix_hex)</code>. Only <code>iv_prefix_hex</code>
+                    is hex-decoded when building the nonce; the other two are used as plain strings.
+                    Recovering these three values from the keyboard capture is the core of the challenge.
+                </p>
+
+                <p class="writeup-p">
+                    Looking at the actual Rust source confirms exactly how the key and nonce are derived:
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">Rust</span>
+                        <span class="code-block-file">crypto.rs — derive_key</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre><span class="k">pub fn</span> <span class="nb">derive_key</span>(cfg: &amp;CryptoConfig) -&gt; Result&lt;[u8; <span class="mi">32</span>]&gt; {
+    <span class="k">let</span> key_material = <span class="nb">format!</span>(<span class="s">"{}{}{}"</span>, cfg.salt_hex, cfg.pepper_hex, cfg.iv_prefix_hex);
+    <span class="k">let mut</span> hasher = Sha256::new();
+    hasher.update(key_material.as_bytes());
+    <span class="nb">Ok</span>(hasher.finalize().into())
+}</pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">Rust</span>
+                        <span class="code-block-file">crypto.rs — derive_nonce</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre><span class="k">pub fn</span> <span class="nb">derive_nonce</span>(cfg: &amp;CryptoConfig) -&gt; Result&lt;[u8; <span class="mi">12</span>]&gt; {
+    <span class="k">let</span> iv_raw = hex::decode(&amp;cfg.iv_prefix_hex)?;
+    ...
+}</pre>
+                </div>
+            </section>
+
+            <!-- Bluetooth HID -->
+            <section class="writeup-section" id="hid">
+                <div class="writeup-section-title">Filtering Bluetooth HID Traffic</div>
+                <p class="writeup-p">
+                    Ok now we know there exists a zibab tool, what it takes as input and that it can be used to decrypt the cyphertext, 
+                    we now need to find our key components.
+                </p>
+                <p class="writeup-p">
+                    The generic <code>bluetooth</code> filter confirms that the capture contains Bluetooth traffic, but it is noisy and includes a lot of unrelated Bluetooth framing and control packets. 
+                    To recover keystrokes, we only need the L2CAP channel carrying HID interrupt reports. 
+                    In this capture, that channel is <code>0x0041</code>, so filtering on <code>btl2cap.cid == 0x0041</code> isolates the Bluetooth keyboard input reports.
+                    The filter that isolates the relevant packets is:
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">Wireshark</span>
+                        <span class="code-block-file">filter</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre>btl2cap.cid == 0x0041</pre>
+                </div>
+
+                <p class="writeup-p">
+                    Each HID input report has a fixed structure identical to USB HID keyboard reports:
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">Hex</span>
+                        <span class="code-block-file">example report</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre>a1 01  <span class="c">← HID input report header</span>
+00     <span class="c">← modifier byte (0x00 = No Shift)</span>
+00     <span class="c">← reserved byte</span>
+12     <span class="c">← keycode (0x12 = 'o')</span>
+00 00 00 00 00  <span class="c">← remaining key slots (up to 6 total)</span></pre>
+                </div>
+                
+                <img src="screenshots/AuvergnHack2026/L2CAP_capture.png" alt="L2CAP capture" class="writeup-img">
+                <div class="writeup-img-caption">L2CAP capture showing Dynamic channel and HID input report</div>
+
+            </section>
+
+            <!-- Decoding -->
+            <section class="writeup-section" id="decoding">
+                <div class="writeup-section-title">Decoding the Keyboard Input</div>
+                <p class="writeup-p">
+                    We write a Python script that extracts all HID reports from the capture and maps each keycode
+                    to its character using the HID keyboard usage table. It is worth noting that the key maping is AZERTY / French Keyboard. 
+                    The key point is to only process <strong>new key presses</strong> and comparing each report against the
+                    previous one, otherwise held keys get duplicated. 
+                    We also want to interpret backspaces and ignore arrow keys and empty input before printing the results
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">Python</span>
+                        <span class="code-block-file">decode_hid.py</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre><span class="k">import</span> pyshark
+
+BASE = {
+    <span class="mi">4</span>:<span class="s">"a"</span>, <span class="mi">5</span>:<span class="s">"b"</span>, <span class="mi">6</span>:<span class="s">"c"</span>, <span class="mi">7</span>:<span class="s">"d"</span>, <span class="mi">8</span>:<span class="s">"e"</span>, <span class="mi">9</span>:<span class="s">"f"</span>,
+    <span class="mi">10</span>:<span class="s">"g"</span>, <span class="mi">11</span>:<span class="s">"h"</span>, <span class="mi">12</span>:<span class="s">"i"</span>, <span class="mi">13</span>:<span class="s">"j"</span>, <span class="mi">14</span>:<span class="s">"k"</span>, <span class="mi">15</span>:<span class="s">"l"</span>,
+    <span class="mi">16</span>:<span class="s">"m"</span>, <span class="mi">17</span>:<span class="s">"n"</span>, <span class="mi">18</span>:<span class="s">"o"</span>, <span class="mi">19</span>:<span class="s">"p"</span>, <span class="mi">20</span>:<span class="s">"q"</span>, <span class="mi">21</span>:<span class="s">"r"</span>,
+    <span class="mi">22</span>:<span class="s">"s"</span>, <span class="mi">23</span>:<span class="s">"t"</span>, <span class="mi">24</span>:<span class="s">"u"</span>, <span class="mi">25</span>:<span class="s">"v"</span>, <span class="mi">26</span>:<span class="s">"w"</span>, <span class="mi">27</span>:<span class="s">"x"</span>,
+    <span class="mi">28</span>:<span class="s">"y"</span>, <span class="mi">29</span>:<span class="s">"z"</span>,
+    <span class="mi">30</span>:<span class="s">"1"</span>, <span class="mi">31</span>:<span class="s">"2"</span>, <span class="mi">32</span>:<span class="s">"3"</span>, <span class="mi">33</span>:<span class="s">"4"</span>, <span class="mi">34</span>:<span class="s">"5"</span>,
+    <span class="mi">35</span>:<span class="s">"6"</span>, <span class="mi">36</span>:<span class="s">"7"</span>, <span class="mi">37</span>:<span class="s">"8"</span>, <span class="mi">38</span>:<span class="s">"9"</span>, <span class="mi">39</span>:<span class="s">"0"</span>,
+    <span class="mi">40</span>:<span class="s">"\n"</span>, <span class="mi">41</span>:<span class="s">"[ESC]"</span>, <span class="mi">42</span>:<span class="s">"[BKSP]"</span>, <span class="mi">43</span>:<span class="s">"[TAB]"</span>, <span class="mi">44</span>:<span class="s">" "</span>,
+    <span class="mi">45</span>:<span class="s">"-"</span>, <span class="mi">46</span>:<span class="s">"+"</span>, <span class="mi">47</span>:<span class="s">"{"</span>, <span class="mi">48</span>:<span class="s">"}"</span>, <span class="mi">49</span>:<span class="s">"|"</span>,
+    <span class="mi">51</span>:<span class="s">":"</span>, <span class="mi">52</span>:<span class="s">'"'</span>, <span class="mi">53</span>:<span class="s">"~"</span>, <span class="mi">54</span>:<span class="s">"&lt;"</span>, <span class="mi">55</span>:<span class="s">"."</span>, <span class="mi">56</span>:<span class="s">"/"</span>,
+    <span class="mi">57</span>:<span class="s">"[CAPSLOCK]"</span>, <span class="mi">79</span>:<span class="s">"[RIGHT]"</span>, <span class="mi">80</span>:<span class="s">"[LEFT]"</span>,
+    <span class="mi">81</span>:<span class="s">"[DOWN]"</span>, <span class="mi">82</span>:<span class="s">"[UP]"</span>, <span class="mi">100</span>:<span class="s">"\"</span>
+}
+
+SHIFT = {
+    <span class="mi">4</span>:<span class="s">"A"</span>, <span class="mi">5</span>:<span class="s">"B"</span>, <span class="mi">6</span>:<span class="s">"C"</span>, <span class="mi">7</span>:<span class="s">"D"</span>, <span class="mi">8</span>:<span class="s">"E"</span>, <span class="mi">9</span>:<span class="s">"F"</span>,
+    <span class="mi">10</span>:<span class="s">"G"</span>, <span class="mi">11</span>:<span class="s">"H"</span>, <span class="mi">12</span>:<span class="s">"I"</span>, <span class="mi">13</span>:<span class="s">"J"</span>, <span class="mi">14</span>:<span class="s">"K"</span>, <span class="mi">15</span>:<span class="s">"L"</span>,
+    <span class="mi">16</span>:<span class="s">"M"</span>, <span class="mi">17</span>:<span class="s">"N"</span>, <span class="mi">18</span>:<span class="s">"O"</span>, <span class="mi">19</span>:<span class="s">"P"</span>, <span class="mi">20</span>:<span class="s">"Q"</span>, <span class="mi">21</span>:<span class="s">"R"</span>,
+    <span class="mi">22</span>:<span class="s">"S"</span>, <span class="mi">23</span>:<span class="s">"T"</span>, <span class="mi">24</span>:<span class="s">"U"</span>, <span class="mi">25</span>:<span class="s">"V"</span>, <span class="mi">26</span>:<span class="s">"W"</span>, <span class="mi">27</span>:<span class="s">"X"</span>,
+    <span class="mi">28</span>:<span class="s">"Y"</span>, <span class="mi">29</span>:<span class="s">"Z"</span>,
+    <span class="mi">30</span>:<span class="s">"!"</span>, <span class="mi">31</span>:<span class="s">"@"</span>, <span class="mi">32</span>:<span class="s">"#"</span>, <span class="mi">33</span>:<span class="s">"$"</span>, <span class="mi">34</span>:<span class="s">"%"</span>,
+    <span class="mi">35</span>:<span class="s">"^"</span>, <span class="mi">36</span>:<span class="s">"&amp;"</span>, <span class="mi">37</span>:<span class="s">"*"</span>, <span class="mi">38</span>:<span class="s">"("</span>, <span class="mi">39</span>:<span class="s">")"</span>,
+    <span class="mi">40</span>:<span class="s">"\n"</span>, <span class="mi">41</span>:<span class="s">"[ESC]"</span>, <span class="mi">42</span>:<span class="s">"[BKSP]"</span>, <span class="mi">43</span>:<span class="s">"[TAB]"</span>, <span class="mi">44</span>:<span class="s">" "</span>,
+    <span class="mi">45</span>:<span class="s">"-"</span>, <span class="mi">46</span>:<span class="s">"+"</span>, <span class="mi">47</span>:<span class="s">"{"</span>, <span class="mi">48</span>:<span class="s">"}"</span>, <span class="mi">49</span>:<span class="s">"|"</span>,
+    <span class="mi">51</span>:<span class="s">":"</span>, <span class="mi">52</span>:<span class="s">'"'</span>, <span class="mi">53</span>:<span class="s">"~"</span>, <span class="mi">54</span>:<span class="s">"&lt;"</span>, <span class="mi">55</span>:<span class="s">"."</span>, <span class="mi">56</span>:<span class="s">"/"</span>,
+    <span class="mi">57</span>:<span class="s">"[CAPSLOCK]"</span>, <span class="mi">79</span>:<span class="s">"[RIGHT]"</span>, <span class="mi">80</span>:<span class="s">"[LEFT]"</span>,
+    <span class="mi">81</span>:<span class="s">"[DOWN]"</span>, <span class="mi">82</span>:<span class="s">"[UP]"</span>, <span class="mi">100</span>:<span class="s">"\"</span>
+}
+
+IGNORE = {<span class="mi">57</span>, <span class="mi">79</span>, <span class="mi">80</span>, <span class="mi">81</span>, <span class="mi">82</span>}
+
+cap      = pyshark.FileCapture(<span class="s">"capture.pcapng"</span>, display_filter=<span class="s">"btl2cap.cid == 0x0041"</span>)
+prev     = [<span class="mi">0</span>] * <span class="mi">6</span>
+output   = []
+
+<span class="k">for</span> pkt <span class="k">in</span> cap:
+    <span class="k">try</span>:
+        raw  = bytes.fromhex(str(pkt.btl2cap.payload).replace(<span class="s">":"</span>, <span class="s">""</span>))
+        <span class="k">if</span> raw[<span class="mi">0</span>] != <span class="mi">0xa1</span> <span class="k">or</span> raw[<span class="mi">1</span>] != <span class="mi">0x01</span>: <span class="k">continue</span>
+        mod   = raw[<span class="mi">2</span>]
+        keys  = list(raw[<span class="mi">4</span>:<span class="mi">10</span>])
+        shift = mod <span class="k">in</span> (<span class="mi">0x02</span>, <span class="mi">0x20</span>)
+        table = SHIFT <span class="k">if</span> shift <span class="k">else</span> BASE
+        <span class="k">for</span> k <span class="k">in</span> keys:
+            <span class="k">if</span> k==<span class="mi">0</span> <span class="k">or</span> k <span class="k">in</span> IGNORE:
+                <span class="k">continue</span>
+            <span class="k">if</span> k <span class="k">not in</span> prev:
+                token = table.get(k, <span class="s">f"[{k}]"</span>)
+                <span class="k">if</span> token == <span class="s">"[BKSP]"</span>:
+                    <span class="k">if</span> output:
+                        output.pop()
+                <span class="k">else</span>:
+                    output.append(token)
+        prev = keys
+    <span class="k">except</span>: <span class="k">pass</span>
+
+<span class="nb">print</span>(<span class="s">""</span>.join(output))</pre>
+                </div>
+                <p class="writeup-p">
+                    The decoded keyboard stream is not pasted directly into the write-up because it contains
+                     tab completion, directory movement and Vim motions but my writeup code is provided on the right 
+                     as <code>HW_AuvergnHack2026.py</code>. After interpreting those edits,
+                    the meaningful sequence is:
+                </p>
+                <div class="terminal-output">
+                    <div class="terminal-output-header">
+                        <span class="terminal-dot red"></span>
+                        <span class="terminal-dot yellow"></span>
+                        <span class="terminal-dot green"></span>
+                        <span>output</span>
+                    </div>
+                    <pre><span class="cmd">$ python decode_hid.py</span>
+<span class="out">cd zibab
+git pull
+nvim .config/zibab/cli/config.client.toml
+/iv_prefix
+ci"a7a70ee4939113
+kk
+ci"OhlalaTeteDeSaMerePtn
+j
+ci"NoooonTapePasDansLeMurGrooos
+nvim ~/.config/zibab/cli/config.client.toml
+/Dans
+ciwContre
+:wq
+nvim ~/.config/zibab/cli/config.client.toml
+/Groo
+llio
+:wq</span></pre>
+                </div>
+            </section>
+
+            <!-- Recovering the config -->
+            <section class="writeup-section" id="config">
+                <div class="writeup-section-title">Recovering the Config</div>
+                <p class="writeup-p">
+                    The decoded keystrokes show the user opening the <code>zibab</code> client config in
+                    Vim and editing the three crypto fields. Reading the Vim commands in sequence:
+                </p>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">01</div>
+                        <div class="step-body">
+                            <div class="step-title">Search and set <code>iv_prefix_hex</code></div>
+                            <div class="step-desc">
+                                <code>/iv_prefix</code> jumps to that line.
+                                <br><code>ci"a7a70ee4939113</code> replaces the quoted value and exits insert mode
+                                <br>Result: <code>iv_prefix_hex = "a7a70ee4939113"</code>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">02</div>
+                        <div class="step-body">
+                            <div class="step-title">Move up two lines and set <code>salt_hex</code></div>
+                            <div class="step-desc">
+                                <code>kk</code> moves the cursor two lines up to <code>salt_hex</code>.
+                                <br><code>ci"OhlalaTeteDeSaMerePtn</code> sets the value and exits insert mode.
+                                <br>Result: <code>salt_hex = "OhlalaTeteDeSaMerePtn"</code>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">03</div>
+                        <div class="step-body">
+                            <div class="step-title">Move down one line and set <code>pepper_hex</code></div>
+                            <div class="step-desc">
+                                <code>j</code> moves down one line to <code>pepper_hex</code>.
+                                <br><code>ci"NoooonTapePasDansLeMurGrooos</code> sets the initial value and exits insert mode.
+                                <br>Then later, the user corrects a typo: <code>Dans → Contre</code> and adds an
+                                extra <code>o</code> to <code>Groo</code> (and exits insert mode...).
+                                <br>Final result: <code>pepper_hex = "NoooonTapePasContreLeMurGroooos"</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="writeup-p">
+                    Using the Github Repository default config structure we get
+                    the final recovered client crypto config as:
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">TOML</span>
+                        <span class="code-block-file">recovered config</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre>[crypto]
+algorithm      = <span class="s">"aes-256-gcm"</span>
+kdf            = <span class="s">"sha256"</span>
+key_hint       = <span class="s">"derived"</span>
+nonce_strategy = <span class="s">"iv_prefix_padded"</span>
+salt_hex       = <span class="s">"OhlalaTeteDeSaMerePtn"</span>
+pepper_hex     = <span class="s">"NoooonTapePasContreLeMurGroooos"</span>
+iv_prefix_hex  = <span class="s">"a7a70ee4939113"</span></pre>
+                </div>
+
+                <div class="callout callout-tip">
+                    <span class="callout-label">Note</span>
+                    Despite the <code>_hex</code> field names, <code>salt_hex</code> and <code>pepper_hex</code>
+                    are plain ASCII strings. The <code>zibab</code> source only hex-decodes
+                    <code>iv_prefix_hex</code> when building the nonce, the other two are concatenated as-is.
+                </div>
+            </section>
+
+            <!-- Extracting the payload -->
+            <section class="writeup-section" id="payload">
+                <div class="writeup-section-title">Extracting the Encrypted Payload</div>
+                <p class="writeup-p">
+                    With the config recovered, the network side of the capture becomes useful again.
+                    <code>zibabc</code> (the client) connects to the server on TCP port <code>7070</code> (as shown in the example config of the repo)
+                    and the server transmits the encrypted payload as a single stream: the first 12 bytes are
+                    the nonce, the rest is ciphertext + GCM authentication tag.
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">Rust</span>
+                        <span class="code-block-file">client.rs — receive payload</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre>stream.<span class="nb">read_to_end</span>(&amp;mut buf).<span class="k">await</span>?;
+
+<span class="k">if</span> buf.len() &lt; <span class="mi">12</span> {
+    anyhow::<span class="nb">bail!</span>(<span class="s">"payload too short"</span>);
+}
+
+<span class="k">let</span> nonce_bytes: [u8; <span class="mi">12</span>] = buf[..<span class="mi">12</span>].<span class="nb">try_into</span>()?;
+<span class="k">let</span> ciphertext = &amp;buf[<span class="mi">12</span>..];
+
+<span class="k">let</span> plaintext = crypto::<span class="nb">decrypt_with_nonce</span>(&amp;cfg.crypto, &amp;nonce_bytes, ciphertext)?;</pre>
+                </div>
+
+                <p class="writeup-p">
+                    The above code snippet from <code>client.rs</code> is how we understood 
+                    that the payload was divided into a nonce of <strong>12 bytes</strong> 
+                    and the rest as cyphertext.
+                </p>
+
+                <img src="screenshots/AuvergnHack2026/capture_port_7070.png" alt="Wireshark TCP traffic on port 7070" class="writeup-img">
+                <div class="writeup-img-caption">TCP traffic on port 7070, the zibab data transfer</div>
+
+                <img src="screenshots/AuvergnHack2026/lenght72_packet.png" alt="The 72-byte TCP packet" class="writeup-img">
+                <div class="writeup-img-caption">The 72-byte PSH packet carrying the full encrypted payload</div>
+
+                <img src="screenshots/AuvergnHack2026/Cyphertext.png" alt="Raw payload bytes in Wireshark" class="writeup-img">
+                <div class="writeup-img-caption">Raw 72-byte payload with a nonce (12 bytes) followed by ciphertext + tag (60 bytes)</div>
+
+                <p class="writeup-p">
+                    The payload splits as follows, and the nonce prefix matches the recovered
+                    <code>iv_prefix_hex</code> padded to 12 bytes with zeroes:
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">Text</span>
+                        <span class="code-block-file">payload breakdown</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre>nonce (12 bytes):
+  a7a70ee49391130000000000
+
+ciphertext + tag (60 bytes):
+  a42f44d4b0af500a1648c65a29073624e6a4be7cb82ae1d1
+  197f240a7195ef64dc8a9ec86e31241ddf4eff8a94a489d7
+  3c231684ff6f230e0bf83486</pre>
+                </div>
+            </section>
+
+            <!-- Decryption -->
+            <section class="writeup-section" id="decryption">
+                <div class="writeup-section-title">Offline Decryption</div>
+                <p class="writeup-p">
+                    There is no need to run the <code>zibab</code> binaries. We replicate the key derivation
+                    and decrypt offline in Python using <code>sha256</code>:
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block-header">
+                        <span class="code-block-lang">Python</span>
+                        <span class="code-block-file">decrypt.py</span>
+                        <button class="code-block-copy" onclick="copyCode(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            copy
+                        </button>
+                    </div>
+                    <pre><span class="k">from</span> hashlib <span class="k">import</span> sha256
+<span class="k">from</span> cryptography.hazmat.primitives.ciphers.aead <span class="k">import</span> AESGCM
+
+salt_hex      = <span class="s">"OhlalaTeteDeSaMerePtn"</span>
+pepper_hex    = <span class="s">"NoooonTapePasContreLeMurGroooos"</span>
+iv_prefix_hex = <span class="s">"a7a70ee4939113"</span>
+
+payload = bytes.fromhex(
+    <span class="s">"a7a70ee49391130000000000"</span>
+    <span class="s">"a42f44d4b0af500a1648c65a29073624e6a4be7cb82ae1d1"</span>
+    <span class="s">"197f240a7195ef64dc8a9ec86e31241ddf4eff8a94a489d7"</span>
+    <span class="s">"3c231684ff6f230e0bf83486"</span>
+)
+
+nonce      = payload[:<span class="mi">12</span>]
+ciphertext = payload[<span class="mi">12</span>:]
+
+key_material = (salt_hex + pepper_hex + iv_prefix_hex).encode()
+key          = sha256(key_material).digest()
+
+plaintext = AESGCM(key).decrypt(nonce, ciphertext, <span class="nb">None</span>)
+<span class="nb">print</span>(plaintext.decode())</pre>
+                </div>
+
+                <div class="terminal-output">
+                    <div class="terminal-output-header">
+                        <span class="terminal-dot red"></span>
+                        <span class="terminal-dot yellow"></span>
+                        <span class="terminal-dot green"></span>
+                        <span>output</span>
+                    </div>
+                    <pre><span class="cmd">$ python decrypt.py</span>
+<span class="out">ZiTF{Fra1seFr4mbo1seMyrt1ll3OnVaB1enMang3r}</span></pre>
+                </div>
+            </section>
+
+            <!-- Flag -->
+            <section class="writeup-section" id="flag">
+                <div class="writeup-section-title">Flag</div>
+                <div class="flag-box">
+                    <svg class="flag-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                    <div class="flag-box-content">
+                        <div class="flag-box-label">Flag</div>
+                        <div class="flag-box-value">ZiTF{Fra1seFr4mbo1seMyrt1ll3OnVaB1enMang3r}</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Conclusion -->
+            <section class="writeup-section" id="conclusion">
+                <div class="writeup-section-title">Conclusion</div>
+                <p class="writeup-p">
+                    This challenge combines two attack surfaces in one file. The network side provides context with <code>IRC</code> communications, 
+                    a deliberate decoy and the important port <code>7070</code> captures with the payload to decrypt. 
+                    This is esential to find out about the <strong>zibab</strong> tool on github. 
+                    The hardware side with Bluetooth HID, holds the actual secret hidden within key presses.
+                    Recognising the merged capture structure from the <code>strings</code> output is the
+                    pivotal insight that prevents hours wasted chasing a dead Pastebin link.
+                </p>
+                <p class="writeup-p">
+                    Once the right channel is identified, the decode path is straightforward: extract HID
+                    reports from L2CAP channel <code>0x0041</code>, replay the keystrokes, reconstruct the
+                    Vim editing session to recover the TOML config values, don't get fooled by the last minute changes, 
+                    then replicate the <code>SHA256(salt + pepper + iv_prefix)</code> key derivation to decrypt the TCP payload offline.
+                </p>
+                <div class="callout callout-tip">
+                    <span class="callout-label">Key takeaway</span>
+                    In hardware challenges, a <code>.pcapng</code> file does not necessarily mean network
+                    exploitation. Always run <code>strings</code> first and check for merged captures,
+                    unusual L2CAP channels, or HID traffic. A challenge category is a hint, not a constraint 
+                    and you should always consider other attack angles (a bit of OSINT here).
+                    Bluetooth keyboards leak every keystroke, 
+                    including passwords typed into config files, all that unencrypted...
+                </div>
+            </section>
+
+        </article>
+
+        <!-- Sidebar -->
+        <aside class="writeup-sidebar">
+
+            <!-- Challenge files -->
+            <div class="sidebar-block">
+                <div class="sidebar-block-title">Challenge Files</div>
+                <div class="sidebar-block-body">
+                    <div class="file-list">
+                        <a href="files/AuvergnHack2026/capture.pcapng" class="file-item">
+                            <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            capture.pcapng
+                            <span class="file-size">.pcapng</span>
+                        </a>
+                        <a href="files/AuvergnHack2026/HW_AuvergnHack2026.py" class="file-item">
+                            <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            HW_AuvergnHack2026.py
+                            <span class="file-size">.py</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table of contents -->
+            <div class="sidebar-block">
+                <div class="sidebar-block-title">Contents</div>
+                <div class="sidebar-block-body">
+                    <ul class="toc-list">
+                        <li><a href="#overview"><span class="toc-num">01</span> Overview</a></li>
+                        <li><a href="#challenge"><span class="toc-num">02</span> Challenge Description</a></li>
+                        <li><a href="#analysis"><span class="toc-num">03</span> Identifying the Capture</a></li>
+                        <li><a href="#rabbithole"><span class="toc-num">04</span> The Rabbit Hole</a></li>
+                        <li><a href="#zibab"><span class="toc-num">05</span> Understanding zibab</a></li>
+                        <li><a href="#hid"><span class="toc-num">06</span> Filtering BT HID Traffic</a></li>
+                        <li><a href="#decoding"><span class="toc-num">07</span> Decoding Keyboard Input</a></li>
+                        <li><a href="#config"><span class="toc-num">08</span> Recovering the Config</a></li>
+                        <li><a href="#payload"><span class="toc-num">09</span> Extracting the Payload</a></li>
+                        <li><a href="#decryption"><span class="toc-num">10</span> Offline Decryption</a></li>
+                        <li><a href="#flag"><span class="toc-num">11</span> Flag</a></li>
+                        <li><a href="#conclusion"><span class="toc-num">12</span> Conclusion</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Metadata -->
+            <div class="sidebar-block">
+                <div class="sidebar-block-title">Challenge Info</div>
+                <div class="sidebar-block-body" style="padding:0.8rem 1rem;">
+                    <div class="meta-row">
+                        <span class="meta-row-key">CTF</span>
+                        <span class="meta-row-val">AuvergnHack 2026</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-row-key">Category</span>
+                        <span class="meta-row-val"><span class="cat-badge cat-hardware" style="font-size:0.6rem;">Hardware</span></span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-row-key">Date</span>
+                        <span class="meta-row-val">May 2026</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-row-key">Team result</span>
+                        <span class="meta-row-val" style="color:var(--bronze);">3rd Place</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-row-key">Difficulty</span>
+                        <span class="meta-row-val">Medium</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-row-key">Flag</span>
+                        <span class="meta-row-val" style="color:var(--gold); font-size:0.7rem;">ZiTF{...}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tools used -->
+            <div class="sidebar-block">
+                <div class="sidebar-block-title">Tools Used</div>
+                <div class="sidebar-block-body">
+                    <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;"><span style="color:var(--green);">▸</span> Wireshark</span>
+                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;"><span style="color:var(--green);">▸</span> Python 3</span>
+                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;"><span style="color:var(--green);">▸</span> pyshark</span>
+                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;"><span style="color:var(--green);">▸</span> cryptography</span>
+                        <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); display:flex; align-items:center; gap:0.5rem;"><span style="color:var(--green);">▸</span> strings</span>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <span class="footer-text">
+                    <a href="../writeups.html" style="color:var(--green); text-decoration:none; font-family:var(--font-mono); font-size:0.8rem;">
+                        ← Back to Writeups
+                    </a>
+                </span>
+                <span class="footer-divider">|</span>
+                <span class="footer-text">HACK.LEARN.COMPETE</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const nav = document.getElementById('nav');
+        window.addEventListener('scroll', () => nav.classList.toggle('scrolled', window.scrollY > 50));
+
+        document.getElementById('navToggle').addEventListener('click', () => {
+            document.getElementById('mobileNav').classList.toggle('active');
+        });
+        document.querySelectorAll('.mobile-nav-link').forEach(l => {
+            l.addEventListener('click', () => document.getElementById('mobileNav').classList.remove('active'));
+        });
+
+        const sections = document.querySelectorAll('.writeup-section[id]');
+        const tocLinks = document.querySelectorAll('.toc-list a');
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    tocLinks.forEach(l => l.classList.remove('active'));
+                    const active = document.querySelector(`.toc-list a[href="#${entry.target.id}"]`);
+                    if (active) active.classList.add('active');
+                }
+            });
+        }, { rootMargin: '-20% 0px -70% 0px' });
+        sections.forEach(s => observer.observe(s));
+
+        function copyCode(btn) {
+            const pre = btn.closest('.code-block').querySelector('pre');
+            navigator.clipboard.writeText(pre.innerText).then(() => {
+                btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg> copied';
+                setTimeout(() => {
+                    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> copy';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
